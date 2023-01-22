@@ -1,0 +1,15 @@
+server {
+        server_name 170.83.0.143;
+        root /var/www/;
+
+        index index.html;
+        location / {
+                proxy_pass http://10.128.0.104:8080;
+        }
+
+        location /flower/ {
+                proxy_pass http://10.128.0.105:5555/flower/;
+        }
+
+        location = /robots.txt { return 200 "User-agent: *\nDisallow: /\n"; }
+}
