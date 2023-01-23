@@ -5,13 +5,21 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from textwrap import dedent
 
+
 # The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
-
+from Opinion.ptt import  *
 # Operators; we need this to operate!
 # from airflow.operators.bash import BashOperator
-
+from airflow.operators.python_operator import PythonOperator
 # [END import_module]
+
+def Crawlwer_PTT_Stock():
+    table_name = 'Stock'
+    crawler(table_name)
+
+
+
 
 
 # [START instantiate_dag]
@@ -46,6 +54,7 @@ with DAG(
     start_date=datetime(2021, 1, 1),
     catchup=False,
     tags=["test"],
+    python_callable=Crawlwer_PTT_Stock
 ) as dag:
     # [END instantiate_dag]
 

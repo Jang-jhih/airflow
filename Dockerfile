@@ -1,5 +1,5 @@
 # FROM apache/airflow:2.5.1
-FROM apache/airflow:slim-2.5.1-python3.10
+FROM apache/airflow:2.5.1-python3.9
 
 COPY ./tools ./tools
 
@@ -13,6 +13,6 @@ RUN chown -R airflow ${AIRFLOW_HOME} \
 
 USER airflow
 
-# RUN pip3 install -r ./tools/requirements.txt
+RUN pip3 install -r ./tools/requirements.txt
 
 ENTRYPOINT [ "bash", "./tools/start_services.sh" ]
