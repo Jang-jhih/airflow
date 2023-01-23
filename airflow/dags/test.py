@@ -5,32 +5,24 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from textwrap import dedent
 
-
 # The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
-from Opinion.ptt import  *
+
 # Operators; we need this to operate!
-# from airflow.operators.bash import BashOperator
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.bash import BashOperator
+
 # [END import_module]
-
-def Crawlwer_PTT_Stock():
-    table_name = 'Stock'
-    crawler(table_name)
-
-
-
 
 
 # [START instantiate_dag]
 with DAG(
-    dag_id = "_____",
+    dag_id="____",
     # [START default_args]
     # These args will get passed on to each operator
     # You can override them on a per-task basis during operator initialization
     default_args={
         "depends_on_past": False,
-        "email": ["jacob19921018@google.com"],
+        "email": ["airflow@example.com"],
         "email_on_failure": False,
         "email_on_retry": False,
         "retries": 1,
@@ -49,14 +41,13 @@ with DAG(
         # 'trigger_rule': 'all_success'
     },
     # [END default_args]
-    description="this is a fucking test.",
+    description="A simple tutorial DAG",
     schedule=timedelta(days=1),
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    tags=["test"],
-    python_callable=Crawlwer_PTT_Stock
+    tags=["example"],
 ) as dag:
-    # [END instantiate_dag]
-
-    dag.doc_md = ""
    
+    dag.doc_md = """
+    This is a documentation placed anywhere
+    """ 
