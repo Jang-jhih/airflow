@@ -6,11 +6,15 @@ x-path: &volume
         - &PlugPath './airflow/plugin:/opt/airflow/plugin'
         - &Postgres './pgdata:/var/lib/postgresql/data'
         - &ConfigPath './airflow/airflow.cfg:/opt/airflow/airflow.cfg'
+        - &DataRange './history:/opt/airflow/history'
+        - &DataRangePath "./airflow/dags/history:/opt/airflow/dags/history"
 
 x-connections: &commonConnections
     AIRFLOW__CORE__EXECUTOR: 'CeleryExecutor'
     # AIRFLOW__CELERY__RESULT_BACKEND: 'db+postgresql://airflow:airflow@postgres:5432/airflow'
     AIRFLOW__CELERY__BROKER_URL: 'redis://redis:6379/1'
+    AIRFLOW__CORE__FERNET_KEY: 'hQIPxfJ1mXDdtP/KDfzxAKBoMi993qWJZEisuJo7eLA='
+    AIRFLOW__WEBSERVER__SECRET_KEY: 'a4imZCY/A/8U3gFjw8QfN8YpWaeIK2bSjlfCmE7iYT8='
 
 x-airflow-environment: &airflowEnvironment
     # AIRFLOW__CORE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
@@ -28,11 +32,12 @@ x-default-user: &defaultUser
     FIRSTNAME: 'Firstname'
     LASTNAME: 'Lastname'
     EMAIL: 'username@domain.com'
-x-mongo: &mongoURI
+x-crawler: &crawler
     # user: "root"
     # password: "password"
     host: "mongodb"
     port: "27017"
+
 
 services:
     postgres:
@@ -54,6 +59,8 @@ services:
             dockerfile: Dockerfile
         depends_on:
             - postgres
+            - mongodb
+            - selenium
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
@@ -68,21 +75,19 @@ services:
             context: .
             dockerfile: Dockerfile
         depends_on:
-            - postgres
-            - mongodb
             - scheduler
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
             <<: *defaultUser
-            <<: *mongoURI
-
+            <<: *crawler
         ports:
             - 8082:8080
         volumes:
             # - *ConfigPath
             - *DagPath
             - *PlugPath
+            - *DataRangePath
         command: webserver
 
     flower:

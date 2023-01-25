@@ -15,6 +15,9 @@ docker compose cp webserver:/opt/airflow $PWD
 
 #VirtualEnv
 # source ./venv/bin/activate
-
+python3 -m datahub docker quickstart  --arch m1
+python3 -m datahub docker quickstart --stop
 # datahub docker quickstart --arch m1
 # datahub docker quickstart --stop
+
+openssl rand -base64 32

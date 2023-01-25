@@ -5,29 +5,21 @@ import pandas as pd
 import pickle
 
 
-
+def IsIndocker():
+    return os.path.exists("/.dockerenv")
 
 
 
 class DataBase:
     
     def __init__(self,table_name,):
+
         self.date_range_record_file = os.path.join('history', 'date_range.pickle')
+   
         self.table_name = table_name
-
-        if not os.path.isdir(os.path.join('history')):
-            os.mkdir(os.path.join('history'))
-
-
-    def UpdateRange(self,df):
-        
-        if not os.path.isfile(self.date_range_record_file):
-            pickle.dump({}, open(self.date_range_record_file, 'wb'))
         
         
-        TimeStamp = pickle.load(open(self.date_range_record_file, 'rb'))
-        TimeStamp[self.table_name] = df.sort_values('date',ascending = False)['date'].iloc[0]
-        pickle.dump(TimeStamp, open(self.date_range_record_file, 'wb'))
+    
 
     def table_date_range(self):
         if os.path.isfile(self.date_range_record_file):
@@ -36,9 +28,11 @@ class DataBase:
                 if self.table_name in dates:
                     return dates[self.table_name]
                 else:
-                    return [None, None]
+                    # return [None, None]
+                    return None
         else:
-            return [None, None]
+            # return [None, None]
+            return None
 
     def Mongodb(self,df):
         # user = os.getenv("user") 

@@ -15,17 +15,11 @@ from datetime import datetime
 
 def crawler(table_name): #主要程式
 
-
-    end_page = new_page(table_name) #取得最新頁面
-    
+    end_page = new_page(table_name) #取得最新頁面    
     DB=DataBase(table_name=table_name)
-
     start_page=DB.table_date_range()
-    
     if start_page==[None, None]:
-        start_page=round(end_page/1.5)
-    
-    
+        start_page=round(end_page/1.5)    
 
     for page in range(start_page, end_page, 1):
         print(page)
@@ -92,8 +86,11 @@ def content_cralwer(links):
 
 
 def new_page(table_name): #用於取得最新頁面
-
-    driver = webdriver.Remote('http://selenium:4444/wd/hub',desired_capabilities=DesiredCapabilities.CHROME)
+    
+    if IsIndocker():
+        driver = webdriver.Remote('http://selenium:4444/wd/hub',desired_capabilities=DesiredCapabilities.CHROME)
+    else:
+        driver = webdriver.Chrome()
     driver.get(f"https://www.ptt.cc/bbs/{table_name}/index.html")
     try:
         driver.find_element(By.NAME, "yes").click()

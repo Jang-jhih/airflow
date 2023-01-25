@@ -16,4 +16,6 @@ USER airflow
 RUN pip3 install -r ./tools/requirements.txt
 RUN pip3 install apache-airflow[mongo]
 
+RUN openssl rand -base64 32
+
 ENTRYPOINT [ "bash", "./tools/start_services.sh" ]
