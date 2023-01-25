@@ -9,7 +9,7 @@ from fake_useragent import UserAgent
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
-import datetime
+from datetime import datetime
 
 
 
@@ -67,7 +67,7 @@ def content_cralwer(links):
             board = top_scope[1].text #取得版名
             tital = top_scope[2].text #取得標題
             # date = top_scope[3].text #取得日期
-            date = datetime.datetime.strptime(top_scope[3].text, "%a %b %d %H:%M:%S %Y")  # 取得日期
+            date = datetime.strptime(top_scope[3].text, "%a %b %d %H:%M:%S %Y")  # 取得日期
             artical_list.append([board,classfy,author,tital,date,artical]) #合併進List，後續做DataFrame
             print(tital) #顯示爬取進度
             

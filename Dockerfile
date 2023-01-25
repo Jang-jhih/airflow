@@ -14,5 +14,6 @@ RUN chown -R airflow ${AIRFLOW_HOME} \
 USER airflow
 
 RUN pip3 install -r ./tools/requirements.txt
+RUN pip3 install apache-airflow[mongo]
 
 ENTRYPOINT [ "bash", "./tools/start_services.sh" ]

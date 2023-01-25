@@ -13,7 +13,8 @@ x-connections: &commonConnections
     AIRFLOW__CELERY__BROKER_URL: 'redis://redis:6379/1'
 
 x-airflow-environment: &airflowEnvironment
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
+    # AIRFLOW__CORE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
     PYTHONPATH: '/opt/airflow/dags'
     AIRFLOW_HOME: '/opt/airflow'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'TRUE'
@@ -27,6 +28,11 @@ x-default-user: &defaultUser
     FIRSTNAME: 'Firstname'
     LASTNAME: 'Lastname'
     EMAIL: 'username@domain.com'
+x-mongo: &mongoURI
+    # user: "root"
+    # password: "password"
+    host: "mongodb"
+    port: "27017"
 
 services:
     postgres:
@@ -63,11 +69,14 @@ services:
             dockerfile: Dockerfile
         depends_on:
             - postgres
+            - mongodb
             - scheduler
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
             <<: *defaultUser
+            <<: *mongoURI
+
         ports:
             - 8082:8080
         volumes:
@@ -107,3 +116,19 @@ services:
             - *DagPath
             - *PlugPath
         command: worker
+
+
+    mongodb:
+        image: mongo
+        # volumes:
+        # - './data:/data/db'
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=admin
+            - MONGO_INITDB_ROOT_PASSWORD=admin
+        ports:
+        - 27017:27017
+
+    selenium:
+        image: seleniarm/standalone-chromium
+        ports:
+        - 4444:4444

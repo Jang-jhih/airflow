@@ -1,46 +1,56 @@
 from __future__ import annotations
-
-# [START tutorial]
-# [START import_module]
 from datetime import datetime, timedelta
 from textwrap import dedent
-
-# The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
+from Opinion.ptt import *
+# from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator
+from airflow.providers.mongo.hooks.mongo import MongoHook
 
-# Operators; we need this to operate!
-from airflow.operators.bash import BashOperator
-
-# [END import_module]
 
 
-# [START instantiate_dag]
+table_name="Stock"
+
+def crawler(table_name): #主要程式
+    end_page = new_page(table_name) #取得最新頁面
+    
+    DB=DataBase(table_name=table_name)
+
+    start_page=DB.table_date_range()
+    
+    if start_page==[None, None]:
+        start_page=round(end_page/1.5)
+    
+    for page in range(start_page, end_page, 1):
+        print(page)
+        url = f'https://www.ptt.cc/bbs/{table_name}/index{page}.html'
+        links = links_list(url) #取得所有連結
+        df = content_cralwer(links)
+        df['date'] = page
+        To_Mongo(table_name,df)
+
+def To_Mongo(table_name,df):
+    try:
+        hook = MongoHook(conn_id='mongoid')
+
+        hook.insert_many(mongo_collection=table_name, docs=df.to_dict('records'), mongo_db="Opinion")
+      
+    except Exception as e:
+        print(f"Error connecting to MongoDB -- {e}")
+
+crawler(table_name)
+
 with DAG(
     dag_id="____",
-    # [START default_args]
-    # These args will get passed on to each operator
-    # You can override them on a per-task basis during operator initialization
     default_args={
+        "owner": "Wang-jain-jhih",
         "depends_on_past": False,
         "email": ["airflow@example.com"],
         "email_on_failure": False,
         "email_on_retry": False,
         "retries": 1,
         "retry_delay": timedelta(minutes=5),
-        # 'queue': 'bash_queue',
-        # 'pool': 'backfill',
-        # 'priority_weight': 10,
-        # 'end_date': datetime(2016, 1, 1),
-        # 'wait_for_downstream': False,
-        # 'sla': timedelta(hours=2),
-        # 'execution_timeout': timedelta(seconds=300),
-        # 'on_failure_callback': some_function,
-        # 'on_success_callback': some_other_function,
-        # 'on_retry_callback': another_function,
-        # 'sla_miss_callback': yet_another_function,
-        # 'trigger_rule': 'all_success'
     },
-    # [END default_args]
     description="A simple tutorial DAG",
     schedule=timedelta(days=1),
     start_date=datetime(2021, 1, 1),
@@ -51,3 +61,17 @@ with DAG(
     dag.doc_md = """
     This is a documentation placed anywhere
     """ 
+
+    crawlPTT = PythonOperator(
+        task_id="crawler",
+        python_callable=crawler,
+        provide=True
+    )
+
+    ToMongo = PythonOperator(
+        task_id="To_Mongo",
+        python_callable=To_Mongo,
+        provide=True
+    )
+    
+crawlPTT >> ToMongo
