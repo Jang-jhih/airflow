@@ -13,30 +13,30 @@ from datetime import datetime
 
 
 
-def crawler(table_name): #主要程式
+# def crawler(table_name): #主要程式
 
-    end_page = new_page(table_name) #取得最新頁面    
-    DB=DataBase(table_name=table_name)
-    start_page=DB.table_date_range()
-    if start_page==[None, None]:
-        start_page=round(end_page/1.5)    
+#     end_page = new_page(table_name) #取得最新頁面    
+#     DB=DataBase(table_name=table_name)
+#     start_page=DB.table_date_range()
+#     if start_page==[None, None]:
+#         start_page=round(end_page/1.5)    
 
-    for page in range(start_page, end_page, 1):
-        print(page)
-        url = f'https://www.ptt.cc/bbs/{table_name}/index{page}.html'
-        links = links_list(url) #取得所有連結
-        df = content_cralwer(links)
-        df['date'] = page
-        DB.Mongodb(df=df)
+#     for page in range(start_page, end_page, 1):
+#         print(page)
+#         url = f'https://www.ptt.cc/bbs/{table_name}/index{page}.html'
+#         links = links_list(url) #取得所有連結
+#         df = content_cralwer(links)
+#         df['date'] = page
+#         DB.Mongodb(df=df)
 
 
-def StartPage(table_name):
+# def StartPage(table_name):
 
-    df = pd.read_csv(os.path.join('Datasource',f'{table_name}.csv'))
+#     df = pd.read_csv(os.path.join('Datasource',f'{table_name}.csv'))
     
-    df.reset_index(drop = True, inplace = True)
-    start_page = df['頁數'].sort_values(ascending = False).reset_index(drop = True)[0]
-    return start_page
+#     df.reset_index(drop = True, inplace = True)
+#     start_page = df['頁數'].sort_values(ascending = False).reset_index(drop = True)[0]
+#     return start_page
 
 
 
@@ -91,7 +91,7 @@ def new_page(table_name): #用於取得最新頁面
         driver = webdriver.Remote('http://selenium:4444/wd/hub',desired_capabilities=DesiredCapabilities.CHROME)
     else:
         driver = webdriver.Chrome()
-    driver.get(f"https://www.ptt.cc/bbs/{table_name}/index.html")
+        driver.get(f"https://www.ptt.cc/bbs/{table_name}/index.html")
     try:
         driver.find_element(By.NAME, "yes").click()
     except:

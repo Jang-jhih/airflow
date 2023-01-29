@@ -21,7 +21,7 @@ x-airflow-environment: &airflowEnvironment
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
     PYTHONPATH: '/opt/airflow/dags'
     AIRFLOW_HOME: '/opt/airflow'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'TRUE'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'FALSE'
     AIRFLOW__WEBSERVER__NAVBAR_COLOR: '#bca0dc'
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'TRUE'
 
@@ -132,8 +132,18 @@ services:
             - MONGO_INITDB_ROOT_PASSWORD=admin
         ports:
         - 27017:27017
+        # networks:
+        #     mynet1:
+        #         ipv4_address: 172.19.0.2
 
     selenium:
         image: seleniarm/standalone-chromium
         ports:
         - 4444:4444
+
+# networks:
+#    mynet1:
+#       ipam:
+#          config:
+#          - subnet: 172.19.0.0/16
+
