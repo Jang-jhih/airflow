@@ -24,6 +24,7 @@ x-airflow-environment: &airflowEnvironment
     AIRFLOW__CORE__LOAD_EXAMPLES: 'FALSE'
     AIRFLOW__WEBSERVER__NAVBAR_COLOR: '#bca0dc'
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'TRUE'
+    AIRFLOW__CORE__LAZY_LOAD_PLUGINS: 'FALSE'
 
 x-default-user: &defaultUser
     USERNAME: 'admin'
@@ -52,15 +53,14 @@ services:
         image: redis:6.0.9-alpine
 
 
-
     scheduler:
         build:
             context: .
             dockerfile: Dockerfile
         depends_on:
             - postgres
-            - mongodb
-            - selenium
+            # - mongodb
+            # - selenium
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
@@ -82,7 +82,7 @@ services:
             <<: *defaultUser
             <<: *crawler
         ports:
-            - 8082:8080
+            - 8085:8080
         volumes:
             # - *ConfigPath
             - *DagPath
@@ -123,27 +123,19 @@ services:
         command: worker
 
 
-    mongodb:
-        image: mongo
-        # volumes:
-        # - './data:/data/db'
-        environment:
-            - MONGO_INITDB_ROOT_USERNAME=admin
-            - MONGO_INITDB_ROOT_PASSWORD=admin
-        ports:
-        - 27017:27017
-        # networks:
-        #     mynet1:
-        #         ipv4_address: 172.19.0.2
+    # mongodb:
+    #     image: mongo
+    #     # volumes:
+    #     # - './data:/data/db'
+    #     environment:
+    #         - MONGO_INITDB_ROOT_USERNAME=admin
+    #         - MONGO_INITDB_ROOT_PASSWORD=admin
+    #     ports:
+    #     - 27017:27017
 
-    selenium:
-        image: seleniarm/standalone-chromium
-        ports:
-        - 4444:4444
 
-# networks:
-#    mynet1:
-#       ipam:
-#          config:
-#          - subnet: 172.19.0.0/16
+    # selenium:
+    #     image: seleniarm/standalone-chromium
+    #     ports:
+    #     - 4444:4444
 
