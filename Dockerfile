@@ -12,7 +12,8 @@ RUN chown -R airflow ${AIRFLOW_HOME} \
 RUN apt-get update \
     && apt-get install -y \
         gcc freetds-dev \
-        librdkafka-dev
+        librdkafka-dev \
+        dos2unix
         # python3-dev
 
 RUN pip3 install --upgrade pip
@@ -24,10 +25,10 @@ RUN pip3 install --upgrade acryl-datahub
 RUN pip3 install acryl-datahub[airflow]
 
 
+# RUN sed -i 's/\r//' ./tools/start_services.sh
 
 
+# USER airflow
 
-USER airflow
 
-
-ENTRYPOINT [ "bash", "./tools/start_services.sh" ]
+# ENTRYPOINT [ "bash", "./tools/start_services.sh" ]
