@@ -34,7 +34,11 @@ with DAG(
         tablename = 'price'
         df = pd.read_csv(f'/opt/airflow/tools/{tablename}_tmp.csv')
         mysql = MySqlHook(mysql_conn_id="mysqlid")
-        
+        conn = mysql.get_conn()
+        cursor = conn.cursor()
+
+
+        cursor = db.cursor()
 
     Download_Data = PythonOperator(
         task_id = "Download_Data",

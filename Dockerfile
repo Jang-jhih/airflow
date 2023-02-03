@@ -9,9 +9,16 @@ RUN chown -R airflow ${AIRFLOW_HOME} \
     # && chmod +x ./tools/*.sh
 
 
+RUN apt-get update 
+RUN apt-get install -y \
+    libmysqlclient-dev \
+    mysql-server \
+    mysql-client
+#     # python3-dev
+
 USER airflow
 
-RUN mkdir /opt/airflow/data
+
 RUN pip3 install --upgrade pip
 RUN pip3 install -r ./tools/requirements
 

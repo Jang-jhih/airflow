@@ -10,7 +10,7 @@ x-airflow-environment: &airflowEnvironment
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
     PYTHONPATH: '/opt/airflow/dags'
     AIRFLOW_HOME: '/opt/airflow'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'TRUE'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'FALSE'
     AIRFLOW__WEBSERVER__NAVBAR_COLOR: '#bca0dc'
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'TRUE'
 
