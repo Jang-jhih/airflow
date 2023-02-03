@@ -11,6 +11,7 @@ RUN chown -R airflow ${AIRFLOW_HOME} \
 
 USER airflow
 
+RUN mkdir /opt/airflow/data
 RUN pip3 install --upgrade pip
 RUN pip3 install -r ./tools/requirements
 

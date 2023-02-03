@@ -15,8 +15,8 @@ x-airflow-environment: &airflowEnvironment
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'TRUE'
 
 x-default-user: &defaultUser
-    USERNAME: 'admin'
-    PASSWORD: 'admin'
+    USERNAME: 'airflow'
+    PASSWORD: 'airflow'
     ROLE: 'Admin'
     FIRSTNAME: 'Firstname'
     LASTNAME: 'Lastname'
@@ -26,6 +26,7 @@ x-airflow-volume: &airflow-volume
     volumes:
         - &dags "./dags:/opt/airflow/dags"
         - &plugins "./plugins:/opt/airflow/plugins"
+        # - &data "./data:/opt/airflow/data"
         
 
         
@@ -52,6 +53,7 @@ services:
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
+            <<: *defaultUser
         <<: *airflow-volume
 
         command: scheduler
@@ -66,7 +68,7 @@ services:
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
-            <<: *defaultUser
+            # <<: *defaultUser
         ports:
             - 58080:8080
 
@@ -104,23 +106,37 @@ services:
         command: worker
 
 
-    mongodb:
-        image: mongo
-        hostname: mongodb
-        volumes:
-            # - './data:/data/db'
-          - monge-db-volume:/data/db
-        environment:
-            - MONGO_INITDB_ROOT_USERNAME=airflow
-            - MONGO_INITDB_ROOT_PASSWORD=airflow
-        ports:
-        - 27017:27017
+    mysql:
+        image: mysql:latest
+        hostname: mysql
 
-    selenium:
-        image: seleniarm/standalone-chromium
-        hostname: selenium
+        volumes:
+            - mysql-data:/var/lib/mysql
+
+        environment:
+            MYSQL_ROOT_PASSWORD: airflow
+            MYSQL_DATABASE: stock
         ports:
-            - 4444:4444
+        - "3306:3306"
+
+
+    # mongodb:
+    #     image: mongo
+    #     hostname: mongodb
+    #     volumes:
+    #         # - './data:/data/db'
+    #       - monge-db-volume:/data/db
+    #     environment:
+    #         - MONGO_INITDB_ROOT_USERNAME=airflow
+    #         - MONGO_INITDB_ROOT_PASSWORD=airflow
+    #     ports:
+    #     - 27017:27017
+
+    # selenium:
+    #     image: seleniarm/standalone-chromium
+    #     hostname: selenium
+    #     ports:
+    #         - 4444:4444
 
 
 
@@ -128,3 +144,4 @@ services:
 volumes:
   postgres-db-volume:
   monge-db-volume:
+  mysql-data:
