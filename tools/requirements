@@ -1,0 +1,4 @@
+psycopg2-binary
+fake_useragent
+apache-airflow-providers-mongo
+selenium

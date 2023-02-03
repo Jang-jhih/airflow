@@ -1,24 +1,44 @@
 from textwrap import dedent
 from airflow import DAG
-# from Opinion.ToDatabas import *
 from Opinion.ptt import *
 from airflow.operators.python import PythonOperator
-from airflow.utils.dates import days_ago
 from airflow.models import Variable
 from airflow.providers.mongo.hooks.mongo import MongoHook
+from datetime import datetime, timedelta
 
 default_args = {
     'owner': 'airflow',
-}
+    # "depends_on_past": False,
+    # "email": ["airflow@example.com"],
+    # "email_on_failure": False,
+    # "email_on_retry": False,
+    # "retries": 1,
+    # "retry_delay": timedelta(minutes=5),
+    # 'queue': 'bash_queue',
+    # 'pool': 'backfill',
+    # 'priority_weight': 10,
+    # 'end_date': datetime(2016, 1, 1),
+    # 'wait_for_downstream': False,
+    # 'sla': timedelta(hours=2),
+    # 'execution_timeout': timedelta(seconds=300),
+    # 'on_failure_callback': some_function,
+    # 'on_success_callback': some_other_function,
+    # 'on_retry_callback': another_function,
+    # 'sla_miss_callback': yet_another_function,
+    # 'trigger_rule': 'all_success'
+    }
 
 with DAG(
-    '____',
+    "PTT_Stock",
     default_args=default_args,
-    description='PTT Opinion',
-    schedule_interval=None,
-    start_date=days_ago(2),
-    tags=['PTT_Crawler'],
+    description="Cralwer",
+    schedule=timedelta(days=1),
+    start_date=datetime(2021, 1, 1),
+    catchup=False,
+    tags=["PTT_Opinion"],
 ) as dag:
+
+
     dag.doc_md = __doc__
 
     def extract(**kwargs):
@@ -46,7 +66,7 @@ with DAG(
         links = links_list(url) #取得所有連結
         df = content_cralwer(links)
         df['date'] = page
-        df.to_csv(f'/opt/airflow/data/{table_name}_tmp.csv')
+        df.to_csv(f'/opt/airflow/tools/{table_name}_tmp.csv')
         
 
 
@@ -60,11 +80,11 @@ with DAG(
         table_name = ti.xcom_pull(task_ids='transform',key='table_name')
 
 
-        df = pd.read_csv(f'/opt/airflow/data/{table_name}_tmp.csv')
+        df = pd.read_csv(f'/opt/airflow/tools/{table_name}_tmp.csv')
 
         dict = df.to_dict('records')
 
-        hook = MongoHook(conn_id="mongo")
+        hook = MongoHook(conn_id="mongoid")
         hook.insert_many(docs=dict,mongo_db="Opinion",mongo_collection=table_name )
 
         page = ti.xcom_pull(task_ids='extract', key='order_data')
