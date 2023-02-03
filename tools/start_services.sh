@@ -7,6 +7,7 @@ source ./tools/flower.sh
 source ./tools/scheduler.sh
 source ./tools/webserver.sh
 source ./tools/worker.sh
+source ./tools/init.sh
 
 case $SERVICE in
     flower)
@@ -21,6 +22,10 @@ case $SERVICE in
     worker)
         worker
         ;;
+    version)
+        version
+        ;;
+        
     *)
         echo "ERROR: service name not recognized, try: scheduler, webserver, flower or worker"
         exit 1

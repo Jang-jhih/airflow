@@ -31,6 +31,19 @@ x-airflow-volume: &airflow-volume
 
         
 services:
+    init:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        command: version
+        environment:
+            <<: *defaultUser
+            <<: *commonConnections
+            <<: *airflowEnvironment
+        depends_on:
+            - webserver
+
+
     postgres:
         image: postgres:12-alpine
         environment:
@@ -53,7 +66,7 @@ services:
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
-            <<: *defaultUser
+            # <<: *defaultUser
         <<: *airflow-volume
 
         command: scheduler

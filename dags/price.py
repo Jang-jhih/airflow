@@ -3,6 +3,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
+from airflow.providers.mysql.hooks.mysql import MySqlHook
 
 from finance.stock import *
 
@@ -32,6 +33,7 @@ with DAG(
     def pass_to_Neo4j():
         tablename = 'price'
         df = pd.read_csv(f'/opt/airflow/tools/{tablename}_tmp.csv')
+        mysql = MySqlHook(mysql_conn_id="mysqlid")
         
 
     Download_Data = PythonOperator(
