@@ -158,3 +158,6 @@ volumes:
   postgres-db-volume:
   monge-db-volume:
   mysql-data:
+
+datahub_network:
+    external: true
