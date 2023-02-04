@@ -6,13 +6,15 @@ x-connections: &commonConnections
     AIRFLOW__CELERY__BROKER_URL: 'redis://redis:6379/1'
 
 x-airflow-environment: &airflowEnvironment
-    # AIRFLOW__CORE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 'postgresql+psycopg2://airflow:airflow@postgres:5432/airflow'
     PYTHONPATH: '/opt/airflow/dags'
     AIRFLOW_HOME: '/opt/airflow'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'FALSE'
     AIRFLOW__WEBSERVER__NAVBAR_COLOR: '#bca0dc'
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'TRUE'
+    AIRFLOW__WEBSERVER__SECRET_KEY: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8'
+    # echo -n "password" | sha256sum
+
 
 x-default-user: &defaultUser
     USERNAME: 'airflow'
@@ -41,7 +43,12 @@ services:
             <<: *commonConnections
             <<: *airflowEnvironment
         depends_on:
-            - webserver
+            - postgres
+        deploy:
+          resources:
+            limits:
+              cpus: '0.50'
+              memory: 500M
 
 
     postgres:
@@ -50,6 +57,8 @@ services:
             POSTGRES_USER: airflow
             POSTGRES_PASSWORD: airflow
             POSTGRES_DB: airflow
+        ports:
+            - 5432:5432
         volumes:
             - postgres-db-volume:/var/lib/postgresql/data
 
@@ -62,7 +71,7 @@ services:
             context: .
             dockerfile: Dockerfile
         depends_on:
-            - postgres
+            - init
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
@@ -76,8 +85,7 @@ services:
             context: .
             dockerfile: Dockerfile
         depends_on:
-            - postgres
-            - scheduler
+            - init
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
@@ -87,14 +95,14 @@ services:
 
         <<: *airflow-volume
         command: webserver
+        restart: always
 
     flower:
         build:
             context: .
             dockerfile: Dockerfile
         depends_on:
-            - scheduler
-            - redis
+            - init
         environment:
             <<: *commonConnections
             <<: *airflowEnvironment
@@ -115,23 +123,28 @@ services:
 
         <<: *airflow-volume
         depends_on:
-            - scheduler
+            - init
         command: worker
 
+    # sqlite:
+        # image: nouchka/sqlite3
+        # hostname: sqlite
 
-    mysql:
-        image: mysql:latest
-        hostname: mysql
 
-        volumes:
-            # - mysql-data:/var/lib/mysql
-            - ./data:/var/lib/mysql
 
-        environment:
-            MYSQL_ROOT_PASSWORD: airflow
-            MYSQL_DATABASE: stock
-        ports:
-        - "3306:3306"
+    # mysql:
+    #     image: mysql:latest
+    #     hostname: mysql
+
+    #     volumes:
+    #         # - mysql-data:/var/lib/mysql
+    #         - ./data:/var/lib/mysql
+
+    #     environment:
+    #         MYSQL_ROOT_PASSWORD: airflow
+    #         MYSQL_DATABASE: stock
+    #     ports:
+    #     - "3306:3306"
 
 
     # mongodb:

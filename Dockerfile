@@ -4,17 +4,33 @@ COPY ./tools ./tools
 
 
 USER root
+
+RUN mkdir /var/tmp/amundsen \
+&& mkdir /var/tmp/amundsen/table_metadata \
+&& mkdir /var/tmp/amundsen/table_metadata/relationships 
+
+
+
+#RUN chown -R airflow ${AIRFLOW_HOME} \
+#    && chmod +x ./tools \
+#    && chmod +x /var/tmp/amundsen \
+#    && chmod +x /var/tmp/amundsen/table_metadata \
+#    && chmod +x /var/tmp/amundsen/table_metadata/relationships 
+
+
 RUN chown -R airflow ${AIRFLOW_HOME} \
-    && chmod +x ./tools
+    && chmod 777 ./tools 
 
-
-
-RUN apt-get update 
-RUN apt-get install -y \
-    libmysqlclient-dev \
-    mysql-server \
-    mysql-client
+# RUN apt-get update 
+# RUN apt-get install -y \
+#     libmysqlclient-dev \
+#     mysql-server \
+#     mysql-client
 #     # python3-dev
+
+
+
+
 
 USER airflow
 

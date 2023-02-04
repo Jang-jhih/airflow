@@ -3,7 +3,9 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
-from airflow.providers.mysql.hooks.mysql import MySqlHook
+# from airflow.providers.mysql.hooks.mysql import MySqlHook
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.providers.postgres.operators.postgres import PostgresOperator
 import csv
 from finance.stock import *
 
@@ -30,21 +32,12 @@ with DAG(
         df.to_csv(f'/opt/airflow/tools/{tablename}_tmp.csv')
 
 
-    def pass_to_Neo4j():
+    def pass_to_psql():
         tablename = 'price'
-        # df = pd.read_csv(f'/opt/airflow/tools/{tablename}_tmp.csv')
-        mysql = MySqlHook(mysql_conn_id="_mysqlid")
-        conn = mysql.get_conn()
-        cursor = conn.cursor()
-
-
-        csv_data = csv.reader(open(f'/opt/airflow/tools/{tablename}_tmp.csv'))
-
-        for row in csv_data:
-                 cursor.execute("INSERT INTO table_name (col1,col2,col3) VALUES (%s, %s, %s)",row)
-        conn.commit()
-        cursor.close()
-
+        df = pd.read_csv(f'/opt/airflow/tools/{tablename}_tmp.csv')
+        hook = PostgresHook(postgres_conn_id="_postgresql")
+        engine = hook.get_sqlalchemy_engine()
+        df.to_sql(tablename, engine, if_exists='append')
 
 
 
@@ -54,9 +47,9 @@ with DAG(
     )
 
 
-    pass_to_Neo4j = PythonOperator(
-        task_id = "pass_to_Neo4j",
-        python_callable = pass_to_Neo4j
+    pass_to_psql = PythonOperator(
+        task_id = "pass_to_psql",
+        python_callable = pass_to_psql
     )
 
-    Download_Data  >> pass_to_Neo4j
+    Download_Data  >> pass_to_psql
