@@ -59,11 +59,12 @@ es = Elasticsearch([
 ])
 
 # TODO: user provides a list of schema for indexing
-SUPPORTED_SCHEMAS = ['stock_id', 'date', '成交股數', '成交筆數', '成交金額', '開盤價', '最高價', '最低價', '收盤價','最後揭示買價', '最後揭示賣價']
+# SUPPORTED_SCHEMAS = ['stock_id', 'date', '成交股數', '成交筆數', '成交金額', '開盤價', '最高價', '最低價', '收盤價','最後揭示買價', '最後揭示賣價']
+SUPPORTED_SCHEMAS = ['public']
 # String format - ('schema1', schema2', .... 'schemaN')
 SUPPORTED_SCHEMA_SQL_IN_CLAUSE = "('{schemas}')".format(schemas="', '".join(SUPPORTED_SCHEMAS))
 
-OPTIONAL_TABLE_NAMES = ''
+OPTIONAL_TABLE_NAMES = 'stock'
 
 
 # def connection_string():
@@ -87,19 +88,9 @@ def create_table_extract_job():
     where_clause_suffix = f'st.schemaname in {SUPPORTED_SCHEMA_SQL_IN_CLAUSE}'
 
     # tmp_folder = '/var/tmp/amundsen/table_metadata'
-    tmp_folder = '/tmp'
-    node_files_folder = f'{tmp_folder}/nodes'
-    relationship_files_folder = f'{tmp_folder}/relationships'
-
-    if not os.path.isdir(node_files_folder):
-        os.mkdir(node_files_folder)
-
-    if not os.path.isdir(relationship_files_folder):
-        os.mkdir(relationship_files_folder)
-    
-
-
-
+    tmp_folder = '/var/tmp/amundsen/table_metadata'
+    node_files_folder = f'{tmp_folder}/nodes/'
+    relationship_files_folder = f'{tmp_folder}/relationships/'
 
 
 

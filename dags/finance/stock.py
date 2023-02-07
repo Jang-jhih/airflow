@@ -9,6 +9,7 @@ Created on Thu Nov 24 14:55:11 2022
 from finance.require import *
 import numpy as np
 import io
+from datetime import datetime
 
 
 
@@ -235,3 +236,45 @@ def otc_date_str(date):
         str: 民國歷日期 ex: 109/01/01
     """
     return str(date.year - 1911) + date.strftime('%Y/%m/%d')[4:]
+
+
+def crawl_benchmark(date):
+
+    date_str = date.strftime('%Y%m%d')
+    res = requests_get("https://www.twse.com.tw/exchangeReport/MI_5MINS_INDEX?response=csv&date=" +
+                       date_str + "&_=1544020420045")
+
+    # 利用 pandas 將資料整理成表格
+
+    if len(res.text) < 10:
+        return pd.DataFrame()
+
+    df = pd.read_csv(io.StringIO(res.text.replace("=","")), header=1, index_col='時間')
+
+    # 資料處理
+
+    df = df.dropna(how='all', axis=0).dropna(how='all', axis=1)
+    df.index = pd.to_datetime(date.strftime('%Y %m %d ') + pd.Series(df.index))
+    df = df.apply(lambda s: s.astype(str).str.replace(",", "").astype(float))
+    df = df.reset_index().rename(columns={'時間':'date'})
+    df['stock_id'] = '台股指數'
+    return df.set_index(['stock_id', 'date'])
+
+def interest():
+    res = requests_get('https://www.twse.com.tw/exchangeReport/TWT48U_ALL?response=open_data')
+    res.encoding = 'utf-8'
+    df1 = pd.read_csv(io.StringIO(res.text))
+    
+    time.sleep(5)
+
+    res = requests_get('https://www.tpex.org.tw/web/stock/exright/preAnnounce/prepost_result.php?l=zh-tw&o=data')
+    res.encoding = 'utf-8'
+    
+    # df = df.append(pd.read_csv(StringIO(res.text)))
+    df2 = pd.read_csv(io.StringIO(res.text))
+    df = pd.concat([df1,df2])
+
+    df['date'] = df['除權息日期'].astype('str').replace('年', '/').astype('str').replace('月', '/').astype('str').replace('日', '')
+    df['date'] = pd.to_datetime(str(datetime.now().year) + df['date'].astype('str').str[3:])
+    df = df.set_index([df['股票代號'].astype(str) + ' ' + df['名稱'].astype(str), 'date'])
+    return df

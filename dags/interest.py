@@ -16,9 +16,9 @@ default_args = {
     }
 
 with DAG(
-    "Price",
+    "interest",
     default_args = default_args,
-    description = "Stock price",
+    description = "Stock interest",
     schedule=timedelta(days=1),
     start_date=datetime(2021, 1, 1),
     catchup=False,
@@ -27,20 +27,21 @@ with DAG(
     dag.doc_md = __doc__
     
     def Download_Data():
-        tablename = 'price'
-        datetime_object = datetime.strptime('20230202', '%Y%m%d')
-        df = crawl_price(datetime_object)
+        tablename = 'interest'
+        # datetime_object = datetime.strptime('20230202', '%Y%m%d')
+        df = interest()
         df.reset_index(inplace = True)
         path = os.getcwd()
         df.to_csv(f'{path}/{tablename}_tmp.csv')
 
 
     def pass_to_psql():
-        tablename = 'price'
+        tablename = 'interest'
         path = os.getcwd()
         df = pd.read_csv(f'/{path}/{tablename}_tmp.csv')
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
+
         df.to_sql(tablename, engine, if_exists='append')
 
 

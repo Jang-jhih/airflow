@@ -1,5 +1,5 @@
-psycopg2-binary==2.9.5
-fake_useragent==1.1.1
-apache-airflow-providers-mongo==3.1.1
-selenium==4.8.0
-amundsen-databuilder==7.4.3
+psycopg2-binary
+fake_useragent
+apache-airflow-providers-mongo
+selenium
+amundsen-databuilder
