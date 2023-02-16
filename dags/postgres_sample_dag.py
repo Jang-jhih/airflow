@@ -157,6 +157,7 @@ def create_es_publisher_sample_job():
 
 
 with DAG('amundsen_databuilder', default_args=default_args, **dag_args) as dag:
+
     postgres_table_extract_job = PythonOperator(
         task_id='postgres_table_extract_job',
         python_callable=create_table_extract_job
@@ -166,6 +167,9 @@ with DAG('amundsen_databuilder', default_args=default_args, **dag_args) as dag:
         task_id='postgres_es_publisher_sample_job',
         python_callable=create_es_publisher_sample_job
     )
+    
+    postgres_table_extract_job >> postgres_es_index_job
+    
 
     # elastic search update run after table metadata has been updated
-    postgres_table_extract_job >> postgres_es_index_job
+
