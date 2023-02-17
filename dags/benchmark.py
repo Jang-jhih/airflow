@@ -1,5 +1,6 @@
 from textwrap import dedent
-from airflow import DAG
+# from airflow import DAG
+from openlineage.airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
@@ -30,18 +31,18 @@ with DAG(
         tablename = 'benchmark'
         datetime_object = datetime.strptime('20230202', '%Y%m%d')
         df = crawl_benchmark(datetime_object)
-        df.reset_index(inplace = True)
+
         path = os.getcwd()
-        df.to_csv(f'{path}/{tablename}_tmp.csv')
+        df.to_pickle(f'{path}/{tablename}_tmp.pkl')
 
 
     def pass_to_psql():
         tablename = 'benchmark'
         path = os.getcwd()
-        df = pd.read_csv(f'/{path}/{tablename}_tmp.csv')
+        df = pd.read_pickle(f'/{path}/{tablename}_tmp.pkl')
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
-        df.to_sql(tablename, engine, if_exists='append')
+        df.to_sql(tablename, engine, if_exists='append', index=False)
 
 
 

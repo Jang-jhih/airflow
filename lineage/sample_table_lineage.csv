@@ -1,0 +1,5 @@
+source_table_key,target_table_key
+postgres://stock.public/pe,postgres://stock.public/benchmark
+postgres://stock.public/benchmark,postgres://stock.public/price
+postgres://stock.public/benchmark,postgres://stock.public/bargin
+postgres://stock.public/price,postgres://stock.public/interest

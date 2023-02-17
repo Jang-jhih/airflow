@@ -1,0 +1,15 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+.project
+.classpath
+.idea/
+.settings
+
+# Ignore Gradle build output directory
+build
+
+bin
+
+src/main/java/io/openlineage/client/OpenLineage.java
+src/main/java/io/openlineage/server/*

@@ -1,5 +1,6 @@
 from textwrap import dedent
-from airflow import DAG
+# from airflow import DAG
+from openlineage.airflow import DAG
 from Opinion.ptt import *
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable

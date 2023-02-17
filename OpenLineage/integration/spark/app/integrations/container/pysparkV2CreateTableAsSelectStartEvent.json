@@ -1,0 +1,69 @@
+{
+  "eventType" : "START",
+  "job" : {
+    "namespace" : "testV2Commands",
+    "name" : "open_lineage_integration_v2_commands.atomic_create_table_as_select"
+  },
+  "inputs" : [ {
+    "namespace" : "file",
+    "name" : "/tmp/v2/db.source1",
+    "facets" : {
+      "dataSource": {
+        "name": "file",
+        "uri": "file"
+      },
+      "schema": {
+        "fields": [
+          {
+            "name": "a",
+            "type": "long"
+          },
+          {
+            "name": "b",
+            "type": "long"
+          }
+        ]
+      },
+      "symlinks": {
+        "identifiers": [
+          {
+            "namespace": "/tmp/v2",
+            "name": "db.source1",
+            "type": "TABLE"
+          }
+        ]
+      }
+    }
+  }, {
+    "namespace" : "file",
+    "name" : "/tmp/v2/db.source2",
+    "facets" : {
+      "dataSource": {
+        "name": "file",
+        "uri": "file"
+      },
+      "schema": {
+        "fields": [
+          {
+            "name": "a",
+            "type": "long"
+          },
+          {
+            "name": "b",
+            "type": "long"
+          }
+        ]
+      },
+      "symlinks": {
+        "identifiers": [
+          {
+            "namespace": "/tmp/v2",
+            "name": "db.source2",
+            "type": "TABLE"
+          }
+        ]
+      }
+    }
+  } ],
+  "outputs" : [  ]
+}

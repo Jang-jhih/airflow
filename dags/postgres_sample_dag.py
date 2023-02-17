@@ -3,11 +3,11 @@
 import os
 import uuid
 from datetime import datetime, timedelta
-
-from airflow import DAG  # noqa
+from openlineage.airflow import DAG
+# from airflow import DAG  # noqa
 from airflow import macros  # noqa
 from airflow.operators.python import PythonOperator  # noqa
-
+from openlineage.airflow import DAG
 from elasticsearch import Elasticsearch
 from pyhocon import ConfigFactory
 
@@ -58,22 +58,13 @@ es = Elasticsearch([
     {'host': 'elasticsearch'},
 ])
 
-# TODO: user provides a list of schema for indexing
-# SUPPORTED_SCHEMAS = ['stock_id', 'date', '成交股數', '成交筆數', '成交金額', '開盤價', '最高價', '最低價', '收盤價','最後揭示買價', '最後揭示賣價']
 SUPPORTED_SCHEMAS = ['public']
-# String format - ('schema1', schema2', .... 'schemaN')
+
 SUPPORTED_SCHEMA_SQL_IN_CLAUSE = "('{schemas}')".format(schemas="', '".join(SUPPORTED_SCHEMAS))
 
 OPTIONAL_TABLE_NAMES = 'stock'
 
 
-# def connection_string():
-#     user = 'user'
-#     password = 'password'
-#     host = 'host.docker.internal'
-#     port = '5432'
-#     db = 'moviesdemo'
-#     return "postgresql://%s:%s@%s:%s/%s" % (user, password, host, port, db)
 
 def connection_string():
     user = 'airflow'
@@ -87,7 +78,7 @@ def connection_string():
 def create_table_extract_job():
     where_clause_suffix = f'st.schemaname in {SUPPORTED_SCHEMA_SQL_IN_CLAUSE}'
 
-    # tmp_folder = '/var/tmp/amundsen/table_metadata'
+
     tmp_folder = '/var/tmp/amundsen/table_metadata'
     node_files_folder = f'{tmp_folder}/nodes/'
     relationship_files_folder = f'{tmp_folder}/relationships/'
@@ -164,12 +155,9 @@ with DAG('amundsen_databuilder', default_args=default_args, **dag_args) as dag:
     )
 
     postgres_es_index_job = PythonOperator(
-        task_id='postgres_es_publisher_sample_job',
+        task_id='postgres_es_index_job',
         python_callable=create_es_publisher_sample_job
     )
     
     postgres_table_extract_job >> postgres_es_index_job
     
-
-    # elastic search update run after table metadata has been updated
-

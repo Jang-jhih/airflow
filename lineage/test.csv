@@ -1,0 +1,2 @@
+source_column_key,target_column_key
+postgres://stock.public/benchmark/stock_id,postgres://stock.public/price/stock_id

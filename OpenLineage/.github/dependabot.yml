@@ -1,0 +1,113 @@
+# For information about how to configure Dependabot, see: 
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#configuration-options-for-the-dependabotyml-file
+
+version: 2
+updates:
+  # Supported package managers:
+  # bundler
+  # cargo
+  # composer
+  # docker
+  # mix
+  # elm
+  # gitsubmodule
+  # github-actions
+  # gomod
+  # gradle
+  # maven
+  # npm
+  # nuget
+  # pip, pipenv, pip-compile, poetry (use 'pip')
+  # pub
+  # terraform
+  # yarn (use 'npm')
+  - package-ecosystem: "gradle"
+    directory: "client/java"
+    schedule:
+    # supported intervals: daily, weekly, monthly
+      interval: "weekly"
+      day: "sunday"
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "org.slf4j.slf4j-api"
+
+  - package-ecosystem: "gradle"
+    directory: "integration/flink"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "org.slf4j.slf4j-api"
+
+  - package-ecosystem: "gradle"
+    directory: "integration/spark"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    ignore:
+      - dependency-name: "jackson-databind"
+      - dependency-name: "jackson-core"
+      - dependency-name: "jackson-annotations"
+      - dependency-name: "jackson-dataformat-yaml"
+      - dependency-name: "jackson-datatype-jdk8"
+      - dependency-name: "jackson-datatype-jsr310"
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "com.fasterxml.jackson*"
+      - dependency-name: "org.slf4j.slf4j-api"
+
+  - package-ecosystem: "pip"
+    directory: "client/python"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+      - "dependencies"
+      - "dependabot"
+
+  - package-ecosystem: "pip"
+    directory: "integration/common"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "great-expectations"
+
+
+  - package-ecosystem: "pip"
+    directory: "integration/airflow"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+      - "dependencies"
+      - "dependabot"
+    ignore:
+      - dependency-name: "great-expectations"
+
+  - package-ecosystem: "pip"
+    directory: "integration/dbt"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+      - "dependencies"
+      - "dependabot"
+
+  - package-ecosystem: "cargo"
+    directory: "integration/sql"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "dependabot"

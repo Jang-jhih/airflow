@@ -1,0 +1,873 @@
+version: 2.1
+
+orbs:
+  gcp-cli: circleci/gcp-cli@2.2.0
+  rust: circleci/rust@1.6.0
+
+checkout_project_root: &checkout_project_root
+  # Override checkout path to project root (see: https://circleci.com/docs/2.0/configuration-reference/#checkout)
+  checkout:
+    path: ~/openlineage
+
+install_python_client: &install_python_client
+  run: (cd ~/openlineage/client/python && pip install . --user)
+
+param_build_tag: &param_build_tag
+  parameters:
+    build_tag:
+      default: ""
+      type: string
+
+commands:
+  install_integration_common:
+    description: "Install common integration"
+    parameters:
+      install_parser:
+        type: boolean
+        description: "Whether to install Rust SQL parser"
+    steps:
+      - attach_workspace:
+          at: .
+      - when:
+          condition: << parameters.install_parser >>
+          steps:
+            - run: pip install target/wheels/*.whl
+      - run: (cd ~/openlineage/integration/common && pip install . --user)
+
+jobs:
+  unit-test-client-python:
+    working_directory: ~/openlineage/client/python
+    docker:
+      - image: cimg/python:3.7
+    steps:
+      - *checkout_project_root
+      - run: pip install -e .[dev]
+      - run: python -m flake8 --extend-ignore=F401
+      - run: python -m mypy --install-types --non-interactive --ignore-missing-imports --no-namespace-packages openlineage
+      - run: python -m pytest --cov=openlineage tests/
+      - run: bash <(curl -s https://codecov.io/bash)
+
+  build-client-python:
+    working_directory: ~/openlineage/client/python
+    docker:
+      - image: cimg/python:3.7
+    parameters:
+      build_tag:
+        default: ""
+        type: string
+    steps:
+      - *checkout_project_root
+      - run: python setup.py egg_info -b "<< parameters.build_tag >>" sdist bdist_wheel
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./dist/*.tar.gz
+            - ./dist/*.whl
+
+  build-client-java:
+    working_directory: ~/openlineage/client/java
+    docker:
+      - image: cimg/openjdk:11.0
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-client-java-{{ .Branch }}-{{ .Revision }}
+            - v1-client-java-{{ .Branch }}
+      - run: ./gradlew --no-daemon --stacktrace build
+      - run: ./gradlew --no-daemon jacocoTestReport
+      - run: ./gradlew --no-daemon --info check
+      - run: bash <(curl -s https://codecov.io/bash)
+      - run: ./gradlew javadoc
+      - store_test_results:
+          path: client/java/build/test-results/test
+      - store_artifacts:
+          path: build/reports/tests/test
+          destination: test-report
+      - store_artifacts:
+          path: build/reports/tests/pmd
+          destination: pmd-report
+      - save_cache:
+          key: v1-client-java-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.gradle
+
+  release-client-java:
+    working_directory: ~/openlineage/client/java
+    docker:
+      - image: cimg/openjdk:8.0
+    steps:
+      - *checkout_project_root
+      - run: |
+          # Get, then decode the GPG private key used to sign *.jar
+          export ORG_GRADLE_PROJECT_signingKey=$(echo $GPG_SIGNING_KEY | base64 -d)
+          export RELEASE_PASSWORD=$(echo $SONATYPE_PASSWORD)
+          export RELEASE_USERNAME=$(echo $SONATYPE_USER)
+
+          # publish jar to maven local so it can be found by dependents
+          ./gradlew publishToMavenLocal --info
+
+          # Publish *.jar
+          ./gradlew --no-daemon publish --info
+      - store_artifacts:
+          path: ./build/libs
+          destination: java-client-artifacts
+      - save_cache:
+          key: v1-release-client-java-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.m2
+
+  publish-snapshot-client-java:
+    working_directory: ~/openlineage/client/java
+    docker:
+      - image: cimg/openjdk:8.0
+    steps:
+      - *checkout_project_root
+      - run: |
+          # Get, then decode the GPG private key used to sign *.jar
+          export ORG_GRADLE_PROJECT_signingKey=$(echo $GPG_SIGNING_KEY | base64 -d)
+          export RELEASE_PASSWORD=$(echo $ARTIFACTORY_PASSWORD)
+          export RELEASE_USERNAME=$(echo $ARTIFACTORY_USERNAME)
+          # Publish *.jar
+          ./gradlew --no-daemon publish
+      - save_cache:
+          key: v1-release-client-java-snapshot-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.m2
+
+  release-integration-spark:
+    working_directory: ~/openlineage/integration/spark
+    docker:
+      - image: cimg/openjdk:8.0
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-release-client-java-{{ .Branch }}-{{ .Revision }}
+            - v1-release-client-java-{{ .Branch }}
+      - run: |
+          # Get, then decode the GPG private key used to sign *.jar
+          export ORG_GRADLE_PROJECT_signingKey=$(echo $GPG_SIGNING_KEY | base64 -d)
+          export RELEASE_PASSWORD=$(echo $SONATYPE_PASSWORD)
+          export RELEASE_USERNAME=$(echo $SONATYPE_USER)
+
+          cd ../../client/java
+          ./gradlew --no-daemon publishToMavenLocal
+          cd -
+          # Publish *.jar
+          ./gradlew --no-daemon publish
+      - store_artifacts:
+          path: ./build/libs
+          destination: spark-client-artifacts
+
+
+  publish-snapshot-integration-spark:
+    working_directory: ~/openlineage/integration/spark
+    docker:
+      - image: cimg/openjdk:8.0
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-release-client-java-snapshot-{{ .Branch }}-{{ .Revision }}
+            - v1-release-client-java-snapshot-{{ .Branch }}
+      - run: |
+          # Get, then decode the GPG private key used to sign *.jar
+          export ORG_GRADLE_PROJECT_signingKey=$(echo $GPG_SIGNING_KEY | base64 -d)
+          export RELEASE_PASSWORD=$(echo $ARTIFACTORY_PASSWORD)
+          export RELEASE_USERNAME=$(echo $ARTIFACTORY_USERNAME)
+          cd ../../client/java
+          ./gradlew --no-daemon publishToMavenLocal
+          cd -
+          # Publish *.jar
+          ./gradlew --no-daemon publish
+
+  build-integration-spark:
+    parameters:
+      spark-version:
+        type: string
+    working_directory: ~/openlineage/integration/spark
+    machine:
+      image: ubuntu-2004:current
+    resource_class: large
+    environment:
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+      JDK8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-integration-spark-{{ .Branch }}-{{ .Revision }}
+            - v1-integration-spark-{{ .Branch }}
+      - attach_workspace:
+          at: .
+      - run: |
+          sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+          sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac
+      - run: (cd ./../../client/java/ && ./gradlew --no-daemon --stacktrace publishToMavenLocal)
+      - run: ./gradlew --no-daemon --stacktrace build -Pspark.version=<< parameters.spark-version >>
+      - run:
+          when: on_fail
+          command: cat build/test-results/test/TEST-*.xml
+      - run: ./gradlew --no-daemon jacocoTestReport
+      - run: ./gradlew --no-daemon --info check -Pspark.version=<< parameters.spark-version >>
+      - run: ./gradlew javadoc
+      - store_test_results:
+          path: build/test-results/test
+      - store_artifacts:
+          path: build/reports/tests/test
+          destination: test-report
+      - store_artifacts:
+          path: build/reports/tests/pmd
+          destination: pmd-report
+      - save_cache:
+          key: v1-integration-spark-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.gradle
+
+  release-integration-flink:
+    working_directory: ~/openlineage/integration/flink
+    docker:
+      - image: cimg/openjdk:11
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-release-client-java-{{ .Branch }}-{{ .Revision }}
+            - v1-release-client-java-{{ .Branch }}
+      - run: |
+          # Get, then decode the GPG private key used to sign *.jar
+          export ORG_GRADLE_PROJECT_signingKey=$(echo $GPG_SIGNING_KEY | base64 -d)
+          export RELEASE_PASSWORD=$(echo $SONATYPE_PASSWORD)
+          export RELEASE_USERNAME=$(echo $SONATYPE_USER)
+
+          cd ../../client/java
+          ./gradlew --no-daemon publishToMavenLocal
+          cd -
+          # Publish *.jar
+          ./gradlew --no-daemon publish
+
+  publish-snapshot-integration-flink:
+    working_directory: ~/openlineage/integration/flink
+    docker:
+      - image: cimg/openjdk:11
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-release-client-java-snapshot-{{ .Branch }}-{{ .Revision }}
+            - v1-release-client-java-snapshot-{{ .Branch }}
+      - run: |
+          # Get, then decode the GPG private key used to sign *.jar
+          export ORG_GRADLE_PROJECT_signingKey=$(echo $GPG_SIGNING_KEY | base64 -d)
+          export RELEASE_PASSWORD=$(echo $ARTIFACTORY_PASSWORD)
+          export RELEASE_USERNAME=$(echo $ARTIFACTORY_USERNAME)
+          cd ../../client/java
+          ./gradlew --no-daemon publishToMavenLocal
+          cd -
+          # Publish *.jar
+          ./gradlew --no-daemon publish
+
+  build-integration-flink:
+    parameters:
+      flink-version:
+        type: string
+    working_directory: ~/openlineage/integration/flink
+    docker:
+      - image: cimg/openjdk:11.0
+    resource_class: large
+    environment:
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-integration-flink-{{ .Branch }}-{{ .Revision }}
+            - v1-integration-flink-{{ .Branch }}
+      - attach_workspace:
+          at: .
+      - run: (cd ./../../client/java/ && ./gradlew --no-daemon --stacktrace publishToMavenLocal)
+      - run: ./gradlew --no-daemon --stacktrace build -Pflink.version=<< parameters.flink-version >>
+      - run:
+          when: on_fail
+          command: cat build/test-results/test/TEST-*.xml
+      - run: ./gradlew --no-daemon jacocoTestReport
+      - run: ./gradlew javadoc
+      - store_test_results:
+          path: build/test-results/test
+      - store_artifacts:
+          path: build/reports/tests/test
+          destination: test-report
+      - save_cache:
+          key: v1-integration-flink-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.gradle
+
+  unit-test-integration-common:
+    working_directory: ~/openlineage/integration/common
+    docker:
+      - image: cimg/python:3.7
+    steps:
+      - *checkout_project_root
+      - attach_workspace:
+          at: .
+      - run: pip install tox==3.27.1
+      - run: tox -p all
+      - run: bash <(curl -s https://codecov.io/bash)
+      - store_test_results:
+          path: test-results
+
+  build-integration-common:
+    working_directory: ~/openlineage/integration/common
+    docker:
+      - image: cimg/python:3.7
+    <<: *param_build_tag
+    steps:
+      - *checkout_project_root
+      - run: python setup.py egg_info -b "<< parameters.build_tag >>" sdist bdist_wheel
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./dist/*.whl
+            - ./dist/*.tar.gz
+
+  build-integration-sql:
+    parameters:
+      image:
+        type: string
+      resource_class:
+        type: string
+      run_tests:
+        type: boolean
+    working_directory: ~/openlineage/integration/sql
+    machine:
+      image: ubuntu-2004:current
+    resource_class: << parameters.resource_class >>
+    steps:
+      - *checkout_project_root
+      - run: docker run -it -v $PWD:/code << parameters.image >> bash -c 'cd /code; RUN_TESTS=<<parameters.run_tests>> bash iface-py/script/build.sh'
+      - persist_to_workspace:
+          root: ./iface-py
+          paths:
+            - ./target/wheels/*.whl
+      - when:
+          condition:
+            equal: [ "quay.io/pypa/manylinux2014_x86_64", << parameters.image >> ]
+          steps:
+            - persist_to_workspace:
+                root: ./iface-py
+                paths:
+                  - target/wheels/*.tar.gz
+      - store_artifacts:
+          path: ./iface-py/target/wheels
+          destination: sql-artifacts
+
+  compile-integration-sql-java-linux:
+    working_directory: ~/openlineage/integration/sql/iface-java
+    docker:
+      - image: cimg/openjdk:8.0
+    resource_class: medium
+    steps:
+      - *checkout_project_root
+      - run: bash script/compile.sh
+      - persist_to_workspace:
+          root: ../
+          paths:
+            - target/debug/libopenlineage_sql_java.so
+
+  compile-integration-sql-java-macos:
+    working_directory: ~/openlineage/integration/sql/iface-java
+    macos:
+      xcode: 13.2.1
+    resource_class: medium
+    steps:
+      - *checkout_project_root
+      - run: bash script/compile.sh
+      - persist_to_workspace:
+          root: ../
+          paths:
+            - target/debug/libopenlineage_sql_java.dylib
+
+  build-integration-sql-java:
+    working_directory: ~/openlineage/integration/sql/iface-java
+    docker:
+      - image: cimg/openjdk:8.0
+    resource_class: medium
+    steps:
+      - *checkout_project_root
+      - attach_workspace:
+          at: ../
+      - run: bash script/build.sh
+      - store_artifacts:
+          path: ./build/libs
+          destination: sql-java-artifacts
+
+
+  build-integration-sql-macos:
+    working_directory: ~/openlineage/integration/sql
+    macos:
+      xcode: 13.2.1
+    resource_class: medium
+    steps:
+      - *checkout_project_root
+      - run: RUN_TESTS=true bash iface-py/script/setup-macos.sh
+      - run: RUN_TESTS=true bash iface-py/script/build-macos.sh
+      - persist_to_workspace:
+          root: ./iface-py
+          paths:
+            - target/wheels/*.whl
+      - store_artifacts:
+          path: ./iface-py/target/wheels
+          destination: sql-artifacts-macos
+
+  build-integration-dbt:
+    working_directory: ~/openlineage/integration/dbt
+    docker:
+      - image: cimg/python:3.7
+    <<: *param_build_tag
+    steps:
+      - *checkout_project_root
+      - run: python setup.py egg_info -b "<< parameters.build_tag >>" sdist bdist_wheel
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./dist/*.whl
+            - ./dist/*.tar.gz
+
+  integration-test-integration-spark:
+    parameters:
+      spark-version:
+        type: string
+    working_directory: ~/openlineage/integration/spark
+    machine:
+      image: ubuntu-2004:current
+    resource_class: large
+    environment:
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+      JDK8_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+    steps:
+      - *checkout_project_root
+      - gcp-cli/install
+      - gcp-cli/initialize
+      - run: mkdir -p app/build/gcloud && echo $GCLOUD_SERVICE_KEY > app/build/gcloud/gcloud-service-key.json && chmod 644 app/build/gcloud/gcloud-service-key.json
+      - restore_cache:
+          keys:
+            - v1-integration-spark-{{ .Branch }}-{{ .Revision }}
+            - v1-integration-spark-{{ .Branch }}
+      - run: |
+          sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+          sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac
+      - run: (cd ./../../client/java/ && ./gradlew --no-daemon --stacktrace publishToMavenLocal)
+      - run: ./gradlew --no-daemon integrationTest -Pspark.version=<< parameters.spark-version >>
+      - run:
+          when: on_fail
+          command: cat build/test-results/integrationTest/TEST-*.xml
+      - run: ./gradlew --no-daemon jacocoTestReport
+      - store_test_results:
+          path: build/test-results/integrationTest
+      - store_artifacts:
+          path: build/reports/tests/integrationTest
+          destination: test-report
+      - save_cache:
+          key: v1-integration-spark-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.gradle
+
+  integration-test-integration-flink:
+    parameters:
+      flink-version:
+        type: string
+    working_directory: ~/openlineage/integration/flink
+    machine:
+      image: ubuntu-2004:current
+    resource_class: large
+    environment:
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-integration-flink-{{ .Branch }}-{{ .Revision }}
+            - v1-integration-flink-{{ .Branch }}
+      - run: (cd ./../../client/java/ && ./gradlew --no-daemon --stacktrace publishToMavenLocal)
+      - run: chmod -R 777 data/iceberg/db
+      - run: ./gradlew examples:stateful:build -Pflink.version=<< parameters.flink-version >>
+      - run: ./gradlew --no-daemon integrationTest --i -Pflink.version=<< parameters.flink-version >>
+      - run:
+          when: on_fail
+          command: cat build/test-results/integrationTest/TEST-*.xml
+      - run: ./gradlew --no-daemon jacocoTestReport
+      - store_test_results:
+          path: build/test-results/integrationTest
+      - store_artifacts:
+          path: build/reports/tests/integrationTest
+          destination: test-report
+      - save_cache:
+          key: v1-integration-flink-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.gradle
+
+  unit-test-integration-airflow:
+    parameters:
+      install_parser:
+        type: boolean
+      airflow-version:
+        type: string
+    working_directory: ~/openlineage/integration/airflow
+    docker:
+      - image: cimg/python:3.7
+    steps:
+      - *checkout_project_root
+      - *install_python_client
+      - install_integration_common:
+          install_parser: << parameters.install_parser >>
+      - run: pip install tox==3.27.1 mypy==0.971
+      - run: python -m mypy --install-types --non-interactive --ignore-missing-imports openlineage
+      - run: tox -e py3-<< parameters.airflow-version >>
+      - store_test_results:
+          path: test-results
+      - run: bash <(curl -s https://codecov.io/bash)
+
+  build-integration-airflow:
+    working_directory: ~/openlineage/integration/airflow
+    docker:
+      - image: cimg/python:3.7
+    <<: *param_build_tag
+    steps:
+      - *checkout_project_root
+      - *install_python_client
+      - install_integration_common:
+          install_parser: false
+      - run: python setup.py egg_info -b "<< parameters.build_tag >>" sdist bdist_wheel
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./dist/*.whl
+            - ./dist/*.tar.gz
+
+  integration-test-integration-airflow:
+    parameters:
+      airflow-image:
+        type: string
+    working_directory: ~/openlineage/integration/
+    machine:
+      image: ubuntu-2004:current
+    resource_class: large
+    steps:
+      - *checkout_project_root
+      - gcp-cli/install
+      - gcp-cli/initialize
+      - run: ../.circleci/get-docker-compose.sh
+      - run: cp -r ../client/python python
+      - attach_workspace:
+          at: .
+      - run: AIRFLOW_IMAGE=<< parameters.airflow-image >> ./airflow/tests/integration/docker/up.sh
+      - store_artifacts:
+          path: airflow/tests/integration/tests/airflow/logs
+          destination: airflow-logs
+          when: always
+      - store_artifacts:
+          path: airflow/tests/integration/tests/events
+          destination: events
+          when: always
+
+  integration-test-integration-airflow-failure:
+    parameters:
+        failure-type:
+          type: string
+    working_directory: ~/openlineage/integration/
+    machine:
+      image: ubuntu-2004:current
+    steps:
+      - *checkout_project_root
+      - run: ../.circleci/get-docker-compose.sh
+      - run: cp -r ../client/python python
+      - attach_workspace:
+          at: .
+      - run: AIRFLOW_IMAGE=apache/airflow:2.3.4-python3.7 ./airflow/tests/integration/docker/up-failure.sh << parameters.failure-type >>
+      - store_artifacts:
+          path: airflow/tests/integration/failures/airflow/logs
+          destination: airflow-logs
+
+  unit-test-integration-dagster:
+    working_directory: ~/openlineage/integration/dagster
+    docker:
+      - image: cimg/python:3.7
+    steps:
+      - *checkout_project_root
+      - *install_python_client
+      - run: pip install -e .[dev]
+      - run: flake8
+      - run: python -m mypy --ignore-missing-imports --no-namespace-packages openlineage
+      - run: pytest --cov=openlineage tests/
+      - run: bash <(curl -s https://codecov.io/bash)
+
+  build-integration-dagster:
+    working_directory: ~/openlineage/integration/dagster
+    docker:
+      - image: cimg/python:3.7
+    <<: *param_build_tag
+    steps:
+      - *checkout_project_root
+      - *install_python_client
+      - run: python setup.py egg_info -b "<< parameters.build_tag >>" sdist bdist_wheel
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./dist/*.whl
+            - ./dist/*.tar.gz
+
+  publish-snapshot-python:
+    working_directory: ~/openlineage
+    docker:
+      - image: cimg/python:3.7
+    steps:
+      - *checkout_project_root
+      - attach_workspace:
+          at: .
+      - run: pip install wheel twine
+      - run: mkdir -p target/wheels && cp target/wheels/* dist/
+      - run: python -m twine upload --non-interactive --verbose -u $ARTIFACTORY_USERNAME -p $ARTIFACTORY_PASSWORD --repository-url https://astronomer.jfrog.io/artifactory/api/pypi/pypi-public-libs-release dist/*
+
+  release-python:
+    working_directory: ~/openlineage
+    docker:
+      - image: cimg/python:3.7
+    steps:
+      - *checkout_project_root
+      - attach_workspace:
+          at: .
+      - run: pip install wheel twine
+      - run: mkdir -p target/wheels && cp target/wheels/* dist/
+      - run: python -m twine upload --non-interactive --verbose --repository pypi dist/*
+
+  publish-javadoc:
+    working_directory: ~/openlineage/client/java
+    docker:
+      - image: cimg/openjdk:11.0
+    steps:
+      - *checkout_project_root
+      - add_ssh_keys:
+          fingerprints:
+            - "01:93:41:8a:7b:81:b6:cf:d4:b2:34:52:c6:ff:ac:53"
+      - run: ./gradlew javadoc
+      - run: ./release-javadoc.sh
+
+  publish-spec:
+    working_directory: ~/openlineage
+    docker:
+      - image: cimg/base:2021.07
+    steps:
+      - *checkout_project_root
+      - add_ssh_keys:
+          fingerprints:
+            - "01:93:41:8a:7b:81:b6:cf:d4:b2:34:52:c6:ff:ac:53"
+      - run: spec/release.sh
+
+  build-proxy-backend:
+    working_directory: ~/openlineage/proxy/backend
+    docker:
+      - image: cimg/openjdk:11.0
+    steps:
+      - *checkout_project_root
+      - restore_cache:
+          keys:
+            - v1-proxy-{{ .Branch }}-{{ .Revision }}
+            - v1-proxy-{{ .Branch }}
+      - run: ./gradlew --no-daemon --stacktrace build
+      - run: ./gradlew --no-daemon jacocoTestReport
+      - run: bash <(curl -s https://codecov.io/bash)
+      - store_test_results:
+          path: proxy/build/test-results/test
+      - store_artifacts:
+          path: build/reports/tests/test
+          destination: test-report
+      - save_cache:
+          key: v1-proxy-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/.gradle
+
+  build-image-proxy-backend:
+    working_directory: ~/openlineage/proxy/backend
+    machine:
+      image: ubuntu-2004:current
+    steps:
+      - *checkout_project_root
+      - run: docker build --no-cache --tag "openlineage/proxy:${CIRCLE_SHA1}" .
+      - run: docker save -o proxy.tar "openlineage/proxy:${CIRCLE_SHA1}"
+      - store_artifacts:
+          path: proxy.tar
+
+  release-proxy-backend:
+    working_directory: ~/openlineage/proxy/backend
+    docker:
+      - image: cimg/openjdk:11.0
+    steps:
+      - *checkout_project_root
+      - run: |
+          # Get, then decode the GPG private key used to sign *.jar
+          export ORG_GRADLE_PROJECT_signingKey=$(echo $GPG_SIGNING_KEY | base64 -d)
+          export RELEASE_PASSWORD=$(echo $SONATYPE_PASSWORD)
+          export RELEASE_USERNAME=$(echo $SONATYPE_USER)
+
+          # publish jar to maven local so it can be found by dependents
+          ./gradlew publishToMavenLocal
+
+          # Publish *.jar
+          ./gradlew publish
+
+  release-docker-proxy-backend:
+    working_directory: ~/openlineage/proxy/backend
+    machine:
+      image: ubuntu-2004:current
+    steps:
+      - *checkout_project_root
+      - run: ./docker/login.sh
+      - run: ./docker/build-and-push-proxy.sh $CIRCLE_TAG
+
+  workflow_complete:
+    working_directory: ~/openlineage
+    machine:
+      image: ubuntu-2004:current
+    steps:
+      - run: echo "Complete"
+
+workflows:
+  release:
+    # Only trigger CI job on release (=X.Y.Z) with possible (rcX)
+    jobs:
+      - compile-integration-sql-java-linux:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          context: release
+      - compile-integration-sql-java-macos:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          context: release
+      - release-client-java:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          context: release
+      - release-integration-spark:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          context: release
+          requires:
+            - release-client-java
+      - release-proxy-backend:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          context: release
+      - release-docker-proxy-backend:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          context: release
+      - build-client-python:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - build-integration-common:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - build-integration-airflow:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - build-integration-dbt:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - build-integration-dagster:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - build-integration-sql-java:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          requires:
+            - compile-integration-sql-java-linux
+            - compile-integration-sql-java-macos
+      - build-integration-sql:
+          matrix:
+            alias: build-integration-sql-x86
+            parameters:
+              image: [
+                "quay.io/pypa/manylinux2014_x86_64",
+                "quay.io/pypa/manylinux2014_i686",
+              ]
+              resource_class: ["medium"]
+              run_tests: [false]
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - build-integration-sql:
+          matrix:
+            alias: build-integration-sql-arm
+            parameters:
+              image: [
+                "quay.io/pypa/manylinux2014_aarch64",
+              ]
+              resource_class: [ "arm.medium" ]
+              run_tests: [ false ]
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - build-integration-sql-macos:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+      - release-python:
+          filters:
+            tags:
+              only: /^[0-9]+(\.[0-9]+){2}(-rc\.[0-9]+)?$/
+            branches:
+              ignore: /.*/
+          context: release
+          requires:
+            - build-client-python
+            - build-integration-common
+            - build-integration-airflow
+            - build-integration-dbt
+            - build-integration-dagster
+            - build-integration-sql-x86
+            - build-integration-sql-arm
+            - build-integration-sql-macos
+            - build-integration-sql-java

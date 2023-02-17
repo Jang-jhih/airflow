@@ -1,0 +1,249 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0.
+ */
+
+import org.apache.tools.ant.filters.*
+
+plugins {
+    id 'eclipse'
+    id 'jacoco'
+    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+    id "com.adarshr.test-logger" version "3.2.0"
+    id 'com.diffplug.spotless' version '6.12.0'
+    id "org.openapi.generator" version "6.2.1"
+    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "pmd"
+}
+
+pmd {
+    consoleOutput = true
+    toolVersion = "6.46.0"
+    rulesMinimumPriority = 5
+    ruleSetFiles = rootProject.files("pmd-openlineage.xml")
+    ruleSets = []
+    ignoreFailures = true
+}
+
+pmdMain {
+    reports {
+        html.required = true
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url = 'https://astronomer.jfrog.io/artifactory/maven-public-libs-snapshot'
+    }
+}
+
+ext {
+    assertjVersion = '3.23.1'
+    jacksonVersion = "2.13.4"
+    jacksonDatabindVersion = "2.13.4.2"
+    junit5Version = '5.9.1'
+    lombokVersion = '1.18.24'
+    mockitoVersion = '4.11.0'
+    isReleaseVersion = !version.endsWith('SNAPSHOT')
+}
+
+configurations {
+    codeGenerator
+}
+
+dependencies {
+    implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonDatabindVersion}"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
+    implementation 'org.apache.httpcomponents:httpclient:4.5.14'
+    implementation 'commons-logging:commons-logging:1.2'
+    implementation 'org.yaml:snakeyaml:1.33'
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+    compileOnly 'org.apache.kafka:kafka-clients:3.3.1'
+    compileOnly 'com.amazonaws:amazon-kinesis-producer:0.14.13'
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    codeGenerator project(':generator')
+
+    testImplementation "org.assertj:assertj-core:${assertjVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter:${junit5Version}"
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-inline:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    testImplementation "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+}
+
+configurations {
+    testImplementation.extendsFrom compileOnly
+}
+
+compileJava {
+    options.incremental = true
+    options.compilerArgs << '-parameters'
+    options.encoding = "UTF-8"
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+compileTestJava {
+    options.incremental = true
+    options.compilerArgs << '-parameters'
+    options.encoding = "UTF-8"
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+task generateCode(type: JavaExec) {
+    description 'generate java code from spec.'
+    classpath configurations.codeGenerator
+    mainClass = 'io.openlineage.client.Generator'
+    def rootUrl = "file:$rootDir/../../spec/".toString()
+    args rootUrl + "OpenLineage.json"
+    args rootUrl
+}
+
+openApiGenerate {
+// openapi-generator generate -i spec/OpenLineage.yml -g html2 -o ../OpenLineage.github.io/
+    generatorName = "html2"
+    inputSpec = "$rootDir/../../spec/OpenLineage.yml".toString()
+    outputDir = "$buildDir/docs".toString()
+}
+
+task sourceJar(type: Jar) {
+    classifier 'sources'
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier 'javadoc'
+    from javadoc.destinationDir
+}
+
+compileJava.dependsOn tasks.generateCode
+
+test {
+    useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = 'io.openlineage'
+            artifactId = 'openlineage-java'
+
+            from components.java
+
+            artifact sourceJar
+            artifact javadocJar
+
+            pom {
+                name = 'openlineage-java'
+                description = 'Java library for OpenLineage'
+                url = 'https://github.com/OpenLineage/OpenLineage'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'openlineage'
+                        name = 'OpenLineage Project'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/OpenLineage/OpenLineage.git'
+                    developerConnection = 'scm:git:ssh://github.com:OpenLineage/OpenLineage.git'
+                    url = 'https://github.com/OpenLineage/OpenLineage'
+                }
+            }
+        }
+    }
+
+    processResources {
+        filter ReplaceTokens, tokens: [
+                "version": project.property("version")
+        ]
+    }
+
+    repositories {
+        maven {
+            url = isReleaseVersion ? 'https://oss.sonatype.org/service/local/staging/deploy/maven2' :
+                    'https://astronomer.jfrog.io/artifactory/maven-public-libs-snapshot'
+            credentials {
+                username = System.getenv('RELEASE_USERNAME')
+                password = System.getenv('RELEASE_PASSWORD')
+            }
+        }
+    }
+}
+
+signing {
+    required { isReleaseVersion }
+    def signingKey = findProperty("signingKey")
+    def signingPassword = findProperty("signingPassword")
+    useInMemoryPgpKeys(signingKey, signingPassword)
+    sign publishing.publications.mavenJava
+}
+
+jar {
+    manifest {
+        attributes(
+                'Created-By': "Gradle ${gradle.gradleVersion}",
+                'Built-By': System.getProperty('user.name'),
+                'Build-Jdk': System.getProperty('java.version'),
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+spotless {
+    java {
+        target fileTree('.') {
+            include '**/*.java'
+            exclude 'src/main/java/io/openlineage/server/**/*.java',
+                    'src/main/java/io/openlineage/client/OpenLineage.java',
+                    '**/build/**',
+                    '**/generator/**'
+        }
+        googleJavaFormat()
+        removeUnusedImports()
+    }
+}
+
+def reportsDir = "${buildDir}/reports";
+def coverageDir = "${reportsDir}/coverage";
+
+jacoco {
+    toolVersion = '0.8.5'
+    reportsDir = file(coverageDir)
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled = true
+        html.enabled = true
+        html.destination = file(coverageDir)
+    }
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    "io/openlineage/client/OpenLineage.class",
+                    "io/openlineage/client/OpenLineage\$*.class"
+            ])
+        }))
+    }
+}
