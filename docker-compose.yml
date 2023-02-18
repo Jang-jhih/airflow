@@ -35,18 +35,54 @@ x-airflow-common:
       condition: service_healthy
 
 services:
+  marquez_web:
+    image: marquezproject/marquez-web:latest
+    environment:
+      - MARQUEZ_HOST=marquez
+      - MARQUEZ_PORT=5000
+    ports:
+      - "3000:3000"
+    networks:
+      - amundsennet
+    stdin_open: true
+    tty: true
+    depends_on:
+      - marquez
 
-
+  marquez:
+    image: marquezproject/marquez:latest
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    volumes:
+      - ./docker/wait-for-it.sh:/usr/src/app/wait-for-it.sh
+    networks:
+      - amundsennet
+    depends_on:
+      - postgres
+    entrypoint: ["./wait-for-it.sh", "postgres:5432", "--", "./entrypoint.sh"]
 
 
   postgres:
     build:
       context: ./Psql_docker
       dockerfile: Psql_dockerfile
+
+    ports:
+      - "5432:5432"
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_MULTIPLE_DATABASES: stock,test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - AIRFLOW_USER=airflow
+      - AIRFLOW_PASSWORD=airflow
+      - AIRFLOW_DB=airflow
+      - MARQUEZ_USER=marquez
+      - MARQUEZ_PASSWORD=marquez
+      - MARQUEZ_DB=marquez
+      - EXAMPLE_USER=example
+      - EXAMPLE_PASSWORD=example
+      - EXAMPLE_DB=example
+      - ALLOW_EMPTY_PASSWORD=yes
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
