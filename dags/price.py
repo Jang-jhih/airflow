@@ -1,10 +1,9 @@
 from textwrap import dedent
-# from airflow import DAG
 from openlineage.airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
-# from airflow.providers.mysql.hooks.mysql import MySqlHook
+
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 import csv
@@ -14,7 +13,11 @@ import os
 
 default_args = {
     'owner': 'airflow',
-    }
+    'depends_on_past': False,
+    'start_date': datetime(2023, 2, 18),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5)
+}
 
 with DAG(
     "Price",
@@ -29,20 +32,21 @@ with DAG(
     
     def Download_Data():
         tablename = 'price'
-        datetime_object = datetime.strptime('20230202', '%Y%m%d')
-        df = crawl_price(datetime_object)
-        df.reset_index(inplace = True)
-        path = os.getcwd()
-        df.to_pickle(f'{path}/{tablename}_tmp.pkl')
-
-
-    def pass_to_psql():
-        tablename = 'price'
-        path = os.getcwd()
-        df = pd.read_pickle(f'/{path}/{tablename}_tmp.pkl')
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
-        df.to_sql(tablename, engine, if_exists='append', index=False)
+        
+        datetime_object = datetime.strptime('20230202', '%Y%m%d')
+        dates = date_range(datetime_object, datetime.now())
+        path = os.getcwd()
+        for date in dates:
+            print(f'Crawlar {date}')
+            df = crawl_price(date)
+
+            time.sleep(5)
+            
+
+
+            df.to_sql(tablename, engine, if_exists='append', index=False)
 
 
 
@@ -54,10 +58,7 @@ with DAG(
     )
 
 
-    pass_to_psql = PythonOperator(
-        task_id = "pass_to_psql",
-        python_callable = pass_to_psql
-    )
 
 
-    Download_Data  >> pass_to_psql
+
+    Download_Data 

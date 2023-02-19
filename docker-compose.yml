@@ -10,15 +10,20 @@ x-airflow-common:
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
-    AIRFLOW__CORE__FERNET_KEY: ''
+    # AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__WEBSERVER__SECRET_KEY: 'SECRET_KEY'
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-    AIRFLOW__LINEAGE__BACKEND: openlineage.lineage_backend.OpenLineageBackend
-    OPENLINEAGE_URL: http://marquez:5000  # The URL of the HTTP backend
-    OPENLINEAGE_NAMESPACE: example        # The namespace associated with the dataset, job, and run metadata collected
+    # AIRFLOW__LINEAGE__BACKEND: openlineage.lineage_backend.OpenLineageBackend
+
+    AIRFLOW__LINEAGE__BACKEND: 'datahub_provider.lineage.datahub.DatahubLineageBackend'
+    AIRFLOW__LINEAGE__DATAHUB_KWARGS: '{ "datahub_conn_id": "datahub_rest_default", "capture_ownership_info": true, "capture_tags_info": true, "graceful_exceptions": false }'
+    
+    # OPENLINEAGE_URL: http://marquez:5000  # The URL of the HTTP backend
+    # OPENLINEAGE_NAMESPACE: example        # The namespace associated with the dataset, job, and run metadata collected
     
   volumes:
     - ./dags:/opt/airflow/dags
@@ -26,7 +31,7 @@ x-airflow-common:
 
   user: "${AIRFLOW_UID:-50000}:0"
   networks:
-    - amundsennet
+    - datahub_network
   depends_on:
     &airflow-common-depends-on
     redis:
@@ -43,7 +48,7 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - amundsennet
+      - datahub_network
     stdin_open: true
     tty: true
     depends_on:
@@ -52,12 +57,12 @@ services:
   marquez:
     image: marquezproject/marquez:latest
     ports:
-      - "5000:5000"
-      - "5001:5001"
+      - "5004:5000"
+      - "5003:5001"
     volumes:
       - ./docker/wait-for-it.sh:/usr/src/app/wait-for-it.sh
     networks:
-      - amundsennet
+      - datahub_network
     depends_on:
       - postgres
     entrypoint: ["./wait-for-it.sh", "postgres:5432", "--", "./entrypoint.sh"]
@@ -85,42 +90,40 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+      # - ./data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 5s
       retries: 5
     networks:
-      - amundsennet
+      - datahub_network
     restart: always
 
   redis:
     image: redis:latest
-    expose:
-      - 6379
+    hostname: redis
+    ports:
+      - 6379:6379
+    networks:
+      - datahub_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 30s
       retries: 50
-    networks:
-      - amundsennet
     restart: always
 
   airflow-webserver:
     <<: *airflow-common
-    entrypoint: ./tools/entrypoint.sh
+    command: webserver
     ports:
-      - 8080:8080
+      - 58080:8080
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:58080/health"]
       interval: 10s
       timeout: 10s
       retries: 5
     restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
 
   airflow-scheduler:
     <<: *airflow-common
@@ -131,10 +134,7 @@ services:
       timeout: 10s
       retries: 5
     restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
+
 
   airflow-worker:
     <<: *airflow-common
@@ -146,14 +146,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-    environment:
-      <<: *airflow-common-env
-      DUMB_INIT_SETSID: "0"
     restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
 
   airflow-triggerer:
     <<: *airflow-common
@@ -224,6 +217,6 @@ volumes:
   postgres-db-volume:
 
 networks:
-    amundsennet:
-      name: amundsennet
+    datahub_network:
+      name: datahub_network
       external: true

@@ -1,12 +1,23 @@
 
 
+from dateutil.rrule import rrule, DAILY, MONTHLY
 from finance.require import *
 import numpy as np
 import io
-from datetime import datetime
+from datetime import datetime, date
+import os
 
 
 
+
+
+
+
+
+
+
+def date_range(start_date, end_date):
+    return [dt.date() for dt in rrule(DAILY, dtstart=start_date, until=end_date)]
 
 def crawl_bargin(date):
 
@@ -210,12 +221,19 @@ def crawl_price(date):
     time.sleep(5)
     dfotc = price_otc(date)
     if len(dftwe) != 0 and len(dfotc) != 0:
-        return RenameAndMerge(twe = dftwe,
+        df =  RenameAndMerge(twe = dftwe,
                                 otc = dfotc,
                                 t2o = ReplaceCoulmnsForPrice()['o2tp']
                                 )
     else:
-        return pd.DataFrame()
+        df =  pd.DataFrame()
+
+
+    
+    df = df.apply(pd.to_numeric, errors='coerce')
+    df.reset_index(inplace = True)
+    return df
+
 
 def price_twe(date):
     """
