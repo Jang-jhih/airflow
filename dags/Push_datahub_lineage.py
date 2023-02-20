@@ -5,7 +5,7 @@ from airflow.operators.bash import BashOperator
 from datahub_provider.entities import Dataset, Urn
 
 default_args = {
-    'owner': 'airflow',
+    'owner': 'datahub',
     'depends_on_past': False,
     'start_date': datetime(2023, 2, 18),
     'retries': 1,
@@ -15,13 +15,13 @@ default_args = {
 
 
 with DAG(
-    "chatGPT_test1.",
+    "Push_datahub_lineage",
     default_args = default_args,
     description = "Stock price",
     schedule=timedelta(days=1),
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    tags=["Stock Crawler"],
+    tags=["datahub_demo"],
 ) as dag:
     dag.doc_md = __doc__
 
@@ -42,16 +42,17 @@ with DAG(
 
 
     task1 = BashOperator(
-            task_id="run_data_task",
+            task_id="DataWarehouse",
             dag=dag,
             bash_command="echo 'This is where you might run your data tooling.'",
             inlets=[
-                Dataset("postgres", "stock.public.price"),
-                Urn(
-                    "urn:li:dataset:(urn:li:dataPlatform:snowflake,mydb.schema.tableC,PROD)"
-                ),
+                # Dataset("postgres", "stock.public.price"),
+                Urn("urn:li:dataset:(urn:li:dataPlatform:postgres,stock.public.temp_bargin,PROD)"),
+                Urn("urn:li:dataset:(urn:li:dataPlatform:postgres,stock.public.temp_price,PROD)"),
+
+
             ],
-            outlets=[Dataset("postgres", "stock.public.temp_price")],
+            outlets=[Dataset("postgres", "stock.public")],
         )
 
 

@@ -105,7 +105,11 @@ def run_column_lineage_job():
 
 
 
-with DAG('amundsen_lineage', default_args=default_args, **dag_args) as dag:
+with DAG('amundsen_lineage', 
+        default_args=default_args,
+        tags=["amundsen_demo"],
+         **dag_args
+     ) as dag:
 
     run_table_lineage_job = PythonOperator(
         task_id='postgres_table_extract_job',

@@ -12,7 +12,7 @@ from airflow.utils.dates import days_ago
 from datahub_provider.entities import Dataset, Urn
 
 default_args = {
-    "owner": "airflow",
+    "owner": "datahub",
     "depends_on_past": False,
     "email": ["jdoe@example.com"],
     "email_on_failure": False,
@@ -26,7 +26,7 @@ with DAG(
     description="An example DAG demonstrating the usage of DataHub's Airflow lineage backend.",
     schedule_interval=timedelta(days=1),
     start_date=days_ago(2),
-    tags=["example_tag"],
+    tags=["test"],
     catchup=False,
 ) as dag:
     task1 = BashOperator(

@@ -147,7 +147,11 @@ def create_es_publisher_sample_job():
     job.launch()
 
 
-with DAG('amundsen_databuilder', default_args=default_args, **dag_args) as dag:
+with DAG('amundsen_databuilder', 
+        default_args=default_args, 
+        tags=["amundsen_demo"],
+        **dag_args
+    ) as dag:
 
     postgres_table_extract_job = PythonOperator(
         task_id='postgres_table_extract_job',

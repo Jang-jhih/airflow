@@ -8,7 +8,7 @@ from airflow.providers.mongo.hooks.mongo import MongoHook
 from datetime import datetime, timedelta
 
 default_args = {
-    'owner': 'airflow',
+    'owner': 'Opinion',
     # "depends_on_past": False,
     # "email": ["airflow@example.com"],
     # "email_on_failure": False,
