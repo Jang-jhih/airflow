@@ -19,6 +19,8 @@ x-airflow-common:
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
     # AIRFLOW__LINEAGE__BACKEND: openlineage.lineage_backend.OpenLineageBackend
 
+
+    AIRFLOW__CORE__LAZY_LOAD_PLUGINS: 'false'
     AIRFLOW__LINEAGE__BACKEND: 'datahub_provider.lineage.datahub.DatahubLineageBackend'
     AIRFLOW__LINEAGE__DATAHUB_KWARGS: '{ "datahub_conn_id": "datahub_rest_default", "capture_ownership_info": true, "capture_tags_info": true, "graceful_exceptions": false }'
     
@@ -101,21 +103,20 @@ services:
 
   redis:
     image: redis:latest
-    hostname: redis
-    ports:
-      - 6379:6379
-    networks:
-      - datahub_network
+    expose:
+      - 6379
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 30s
       retries: 50
+    networks:
+      - datahub_network
     restart: always
 
   airflow-webserver:
     <<: *airflow-common
-    command: webserver
+    entrypoint: ./tools/entrypoint.sh
     ports:
       - 58080:8080
     healthcheck:
@@ -124,6 +125,10 @@ services:
       timeout: 10s
       retries: 5
     restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
 
   airflow-scheduler:
     <<: *airflow-common
@@ -134,7 +139,10 @@ services:
       timeout: 10s
       retries: 5
     restart: always
-
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
 
   airflow-worker:
     <<: *airflow-common
@@ -146,7 +154,14 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    environment:
+      <<: *airflow-common-env
+      DUMB_INIT_SETSID: "0"
     restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
 
   airflow-triggerer:
     <<: *airflow-common
