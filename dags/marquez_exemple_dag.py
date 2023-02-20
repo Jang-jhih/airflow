@@ -3,13 +3,11 @@ import random
 from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.utils.dates import days_ago
-from datetime import datetime, timedelta
-
 
 default_args = {
-    'owner': 'marquez',
+    'owner': 'datascience',
     'depends_on_past': False,
-    'start_date':datetime(2021, 1, 1),
+    'start_date': days_ago(1),
     'email_on_failure': False,
     'email_on_retry': False,
     'email': ['datascience@example.com']
@@ -17,9 +15,11 @@ default_args = {
 
 dag = DAG(
     'counter',
-    default_args = default_args,
-    schedule=timedelta(days=1),
+    schedule_interval='*/1 * * * *',
     catchup=False,
+    is_paused_upon_creation=False,
+    max_active_runs=1,
+    default_args=default_args,
     description='DAG that generates a new count value between 1-10.'
 )
 
@@ -27,12 +27,9 @@ t1 = PostgresOperator(
     task_id='if_not_exists',
     postgres_conn_id='_postgresql',
     sql='''
-        DROP TABLE IF EXISTS temp_benchmark_1;
-        CREATE TABLE temp_benchmark AS
-        SELECT * FROM benchmark
-        WHERE date BETWEEN current_date - interval '1 days' AND current_date;
-
-        ''',
+    CREATE TABLE IF NOT EXISTS counts (
+      value INTEGER
+    );''',
     dag=dag
 )
 
@@ -40,12 +37,9 @@ t2 = PostgresOperator(
     task_id='inc',
     postgres_conn_id='_postgresql',
     sql='''
-        DROP TABLE IF EXISTS temp_benchmark_2;
-        CREATE TABLE temp_benchmark AS
-        SELECT * FROM benchmark
-        WHERE date BETWEEN current_date - interval '1 days' AND current_date;
-
-        ''',
+    INSERT INTO counts (value)
+         VALUES (%(value)s)
+    ''',
     parameters={
       'value': random.randint(1, 10)
     },
