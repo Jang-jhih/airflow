@@ -1,6 +1,5 @@
 from textwrap import dedent
-# from airflow import DAG
-from openlineage.airflow import DAG
+from airflow import DAG 
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
@@ -27,7 +26,7 @@ with DAG(
     schedule=timedelta(days=1),
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    tags=["amundsen_demo"],
+    tags=["datahub_demo"],
 ) as dag:
     dag.doc_md = __doc__
     
@@ -52,33 +51,33 @@ with DAG(
     )
 
 
-    t1 = PostgresOperator(
-        task_id='if_not_exists',
-        postgres_conn_id='_postgresql',
-        sql='''
-            DROP TABLE IF EXISTS temp_interest_1;
-            CREATE TABLE temp_interest_1 AS
-            SELECT * FROM interest
-            WHERE date BETWEEN current_date - interval '1 days' AND current_date;
+    # t1 = PostgresOperator(
+    #     task_id='if_not_exists',
+    #     postgres_conn_id='_postgresql',
+    #     sql='''
+    #         DROP TABLE IF EXISTS temp_interest_1;
+    #         CREATE TABLE temp_interest_1 AS
+    #         SELECT * FROM interest
+    #         WHERE date BETWEEN current_date - interval '1 days' AND current_date;
 
-            ''',
-        dag=dag
-    )
+    #         ''',
+    #     dag=dag
+    # )
 
-    t2 = PostgresOperator(
-        task_id='inc',
-        postgres_conn_id='_postgresql',
-        sql='''
-            DROP TABLE IF EXISTS temp_interest_2;
-            CREATE TABLE temp_interest_2 AS
-            SELECT * FROM interest
-            WHERE date BETWEEN current_date - interval '1 days' AND current_date;
+    # t2 = PostgresOperator(
+    #     task_id='inc',
+    #     postgres_conn_id='_postgresql',
+    #     sql='''
+    #         DROP TABLE IF EXISTS temp_interest_2;
+    #         CREATE TABLE temp_interest_2 AS
+    #         SELECT * FROM interest
+    #         WHERE date BETWEEN current_date - interval '1 days' AND current_date;
 
-            ''',
+    #         ''',
 
-        dag=dag
-    )
+    #     dag=dag
+    # )
 
 
 
-    Download_Data >> t1 >> t2
+    Download_Data 

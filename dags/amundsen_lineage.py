@@ -4,7 +4,7 @@
 
 from pyhocon import ConfigFactory
 from datetime import datetime, timedelta
-from openlineage.airflow import DAG
+from airflow import DAG 
 from databuilder.extractor.csv_extractor import (
     CsvColumnLineageExtractor, CsvTableLineageExtractor,
 )

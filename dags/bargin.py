@@ -1,12 +1,12 @@
 from textwrap import dedent
-from openlineage.airflow import DAG
+from airflow import DAG 
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
 from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
-from datahub_provider.entities import Dataset, Urn
+# from datahub_provider.entities import Dataset, Urn
 import csv
 from finance.stock import *
 import os
@@ -66,15 +66,15 @@ with DAG(
     )
 
 
-    update_lineage = BashOperator(
-            task_id="ETL",
-            dag=dag,
-            bash_command="echo 'This is where you might run your data tooling.'",
-            inlets=[
-                Urn("urn:li:dataset:(urn:li:dataPlatform:postgres,stock.public.bargin,PROD)"),
-            ],
-            outlets=[Dataset("postgres", "stock.public.temp_bargin")],
-        )
+    # update_lineage = BashOperator(
+    #         task_id="ETL",
+    #         dag=dag,
+    #         bash_command="echo 'This is where you might run your data tooling.'",
+    #         inlets=[
+    #             Urn("urn:li:dataset:(urn:li:dataPlatform:postgres,stock.public.bargin,PROD)"),
+    #         ],
+    #         outlets=[Dataset("postgres", "stock.public.temp_bargin")],
+    #     )
 
 
-    Download_Data  >> create_temp_table >> update_lineage
+    Download_Data  >> create_temp_table 

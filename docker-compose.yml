@@ -17,10 +17,10 @@ x-airflow-common:
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-    AIRFLOW__CORE__LAZY_LOAD_PLUGINS: 'false'
+    # AIRFLOW__CORE__LAZY_LOAD_PLUGINS: 'false'
 
-    AIRFLOW__LINEAGE__BACKEND: openlineage.lineage_backend.OpenLineageBackend
-    OPENLINEAGE_URL: http://marquez:5000  # The URL of the HTTP backend
+    # AIRFLOW__LINEAGE__BACKEND: openlineage.lineage_backend.OpenLineageBackend
+    # OPENLINEAGE_URL: http://marquez:5000  # The URL of the HTTP backend
 
     
     # AIRFLOW__LINEAGE__BACKEND: 'datahub_provider.lineage.datahub.DatahubLineageBackend'
@@ -44,32 +44,32 @@ x-airflow-common:
       condition: service_healthy
 
 services:
-  marquez_web:
-    image: marquezproject/marquez-web:latest
-    environment:
-      - MARQUEZ_HOST=marquez
-      - MARQUEZ_PORT=5000
-    ports:
-      - "3000:3000"
-    networks:
-      - datahub_network
-    stdin_open: true
-    tty: true
-    depends_on:
-      - marquez
+  # marquez_web:
+  #   image: marquezproject/marquez-web:latest
+  #   environment:
+  #     - MARQUEZ_HOST=marquez
+  #     - MARQUEZ_PORT=5000
+  #   ports:
+  #     - "3000:3000"
+  #   networks:
+  #     - datahub_network
+  #   stdin_open: true
+  #   tty: true
+  #   depends_on:
+  #     - marquez
 
-  marquez:
-    image: marquezproject/marquez:latest
-    ports:
-      - "5004:5000"
-      - "5003:5001"
-    volumes:
-      - ./docker/wait-for-it.sh:/usr/src/app/wait-for-it.sh
-    networks:
-      - datahub_network
-    depends_on:
-      - postgres
-    entrypoint: ["./wait-for-it.sh", "postgres:5432", "--", "./entrypoint.sh"]
+  # marquez:
+  #   image: marquezproject/marquez:latest
+  #   ports:
+  #     - "5004:5000"
+  #     - "5003:5001"
+  #   volumes:
+  #     - ./docker/wait-for-it.sh:/usr/src/app/wait-for-it.sh
+  #   networks:
+  #     - datahub_network
+  #   depends_on:
+  #     - postgres
+  #   entrypoint: ["./wait-for-it.sh", "postgres:5432", "--", "./entrypoint.sh"]
 
 
   postgres:

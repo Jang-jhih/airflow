@@ -3,11 +3,9 @@
 import os
 import uuid
 from datetime import datetime, timedelta
-from openlineage.airflow import DAG
-# from airflow import DAG  # noqa
+from airflow import DAG  # noqa
 from airflow import macros  # noqa
 from airflow.operators.python import PythonOperator  # noqa
-from openlineage.airflow import DAG
 from elasticsearch import Elasticsearch
 from pyhocon import ConfigFactory
 

@@ -1,6 +1,5 @@
 from textwrap import dedent
-# from airflow import DAG
-from openlineage.airflow import DAG
+from airflow import DAG 
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
@@ -23,7 +22,7 @@ with DAG(
     schedule=timedelta(days=1),
     start_date=datetime(2021, 1, 1),
     catchup=False,
-    tags=["amundsen_demo"],
+    tags=["datahub_demo"],
 ) as dag:
     dag.doc_md = __doc__
     

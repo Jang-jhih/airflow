@@ -3,4 +3,5 @@ fake_useragent
 apache-airflow-providers-mongo
 selenium
 amundsen-databuilder
-acryl-datahub-airflow-plugin
+#acryl-datahub-airflow-plugin
+acryl-datahub[datahub-rest]
