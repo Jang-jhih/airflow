@@ -11,6 +11,26 @@ import os
 
 
 
+def month_range(start_date, end_date):
+    return [dt.date() for dt in rrule(MONTHLY, dtstart=start_date, until=end_date)]
+
+def season_range(start_date, end_date):
+
+    if isinstance(start_date, datetime.datetime):
+        start_date = start_date.date()
+
+    if isinstance(end_date, datetime.datetime):
+        end_date = end_date.date()
+
+    ret = []
+    for year in range(start_date.year-1, end_date.year+1):
+        ret += [  datetime.date(year, 5, 15),
+                datetime.date(year, 8, 14),
+                datetime.date(year, 11, 14),
+                datetime.date(year+1, 3, 31)]
+    ret = [r for r in ret if start_date < r < end_date]
+
+    return 
 
 
 
@@ -18,6 +38,43 @@ import os
 
 def date_range(start_date, end_date):
     return [dt.date() for dt in rrule(DAILY, dtstart=start_date, until=end_date)]
+
+
+
+def month_revenue(name, date):
+
+    year = date.year - 1911
+    month = (date.month+10)%12+1
+    if month == 12:
+        year -= 1
+    url = 'https://mops.twse.com.tw/nas/t21/%s/t21sc03_%d_%d.html' % (name, year, month)
+    print(url)
+    res = requests_get(url, verify=False)
+    res.encoding = 'big5'
+
+    try:
+        dfs = pd.read_html(StringIO(res.text), encoding='big-5')
+    except Exception as e:
+        print('MONTH ' + name + ': cannot parse ' + str(date))
+        print(e)
+        return pd.DataFrame()
+
+    df = pd.concat([df for df in dfs if df.shape[1] <= 11 and df.shape[1] > 5])
+
+    if 'levels' in dir(df.columns):
+        df.columns = df.columns.get_level_values(1)
+    else:
+        df = df[list(range(0,10))]
+        column_index = df.index[(df[0] == '公司代號')][0]
+        df.columns = df.iloc[column_index]
+
+    df = df.loc[:,~df.columns.isnull()]
+    df = df.loc[~pd.to_numeric(df['當月營收'], errors='coerce').isnull()]
+    df = df[df['公司代號'] != '合計']
+    df = combine_index(df, '公司代號', '公司名稱')
+    df = preprocess(df, datetime.date(date.year, date.month, 10))
+    return df.drop_duplicates()
+
 
 def crawl_bargin(date):
 

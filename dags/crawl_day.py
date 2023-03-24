@@ -23,6 +23,7 @@ default_args = {
     'retries': 1,
     'retry_delay': timedelta(minutes=5)
 }
+# This DAG is used to crawl the date every day.
 
 with DAG(
     "crawl_date",
@@ -35,15 +36,16 @@ with DAG(
 ) as dag:
     dag.doc_md = __doc__
     
-    def Download_Data():
+    def download_daily_data():
         job = 'crawl_date'
         tablenames = ['price','bargin','benchmark','pe']
+        crawl_funcs = [crawl_price,crawl_bargin,crawl_benchmark,crawl_pe]
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
 
         dates = date_range(datetime_object, datetime.now())
 
-        for date in dates:
+        for date,crawl_func in zip(dates,crawl_funcs):
             print(f'Crawlar {date}')
             for tablename in tablenames:
                 var = f'{job}_{tablename}'
@@ -54,7 +56,7 @@ with DAG(
                 
                 
                 print(f'Crawlar {tablename}')
-                df = crawl_price(date)
+                df = crawl_func(date)
 
                 time.sleep(5)
 
@@ -65,12 +67,12 @@ with DAG(
 
 
 
-    Download_Data = PythonOperator(
-        task_id = "Download_Data",
-        python_callable = Download_Data
+    Download_Daily_Data = PythonOperator(
+        task_id = "download_daily_data",
+        python_callable = download_daily_data
     )
 
 
   
 
-    Download_Data 
+    Download_Daily_Data 
