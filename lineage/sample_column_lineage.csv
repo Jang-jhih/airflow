@@ -1,5 +1,0 @@
-source_column_key,target_column_key
-postgres://stock.public/pe/stock_id,postgres://stock.public/interest/stock_id
-postgres://stock.public/benchmark/stock_id,postgres://stock.public/interest/stock_id
-postgres://stock.public/interest/stock_id,postgres://stock.public/temp_pe/stock_id
-postgres://stock.public/interest/stock_id,postgres://stock.public/temp_benchmark/stock_id
