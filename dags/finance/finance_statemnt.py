@@ -84,5 +84,5 @@ def unzip_finance_zipfile(path):
 
 
 
-if __name__ == "__main__":
-    download_finance_statement(2019, 1)
+# if __name__ == "__main__":
+#     download_finance_statement(2019, 1)
