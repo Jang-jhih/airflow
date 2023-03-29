@@ -8,11 +8,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from datahub_provider.entities import Dataset, Urn
 import csv
-from finance.stock import (crawl_bargin,
-                           crawl_pe,
-                           crawl_price,
-                           crawl_benchmark
-                           )
+from finance.stock import *
 import os
 
 
@@ -43,25 +39,25 @@ with DAG(
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
 
+        try:
+            datetime_object = Variable.get(var)
+        except:
+            datetime_object = datetime.strptime('20000107', '%Y%m%d')
+
         dates = date_range(datetime_object, datetime.now())
 
-        for date,crawl_func in zip(dates,crawl_funcs):
-            print(f'Crawlar {date}')
-            for tablename in tablenames:
+        for crawl_func,tablename in zip(crawl_funcs,tablenames):
+            # print(crawl_func,tablename)
+            for date in dates:
+                week = get_weekday(date)
+                print(f'Crawlar {tablename} {date}')
                 var = f'{job}_{tablename}'
-                try:
-                    datetime_object = Variable.get(var)
-                except:
-                    datetime_object = datetime.strptime('20000107', '%Y%m%d')
-                
-                
-                print(f'Crawlar {tablename}')
                 df = crawl_func(date)
 
                 time.sleep(5)
 
                 df.to_sql(tablename, engine, if_exists='append', index=False)
-            Variable.set(var,date + timedelta(days=1))
+                Variable.set(var,date + timedelta(days=1))
 
 
 

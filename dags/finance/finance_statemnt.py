@@ -7,9 +7,38 @@ import shutil
 def check_dir(path):
     if not os.path.exists(path):
         os.mkdir(path)
+def get_season(date):
+    '''
+    Get the season of the specified date.
+    Parameters
+    ----------
+    date : datetime.date
+        The date.
+    Returns
+    -------
+    int
+        The season of the specified date.
+    '''
+    year = date.year
+    if date.month == 3:
+        season = 4
+        year = year - 1
+        month = 11
+    elif date.month == 5:
+        season = 1
+        month = 2
+    elif date.month == 8:
+        season = 2
+        month = 5
+    elif date.month == 11:
+        season = 3
+        month = 8
+    else:
+        return None
 
 def download_finance_statement(year, season):
-    '''Download the financial statement of the specified year and season.
+    '''
+    Download the financial statement of the specified year and season.
     Parameters
     ----------
     year : int
@@ -66,6 +95,21 @@ def rename_finance_statement(path):
     return True
 
 def download_finance_zipfile(year, season):
+    '''
+    Download the financial statement of the specified year and season.
+    Parameters
+    ----------
+    year : int
+        The year of the financial statement.
+        season : int
+        The season of the financial statement.
+    Returns
+    -------
+        bool
+        True if the financial statement is downloaded successfully.
+        False if the financial statement is not downloaded successfully.
+        '''
+    # url = "https://mops.twse.com.tw/server-java/t164sb01?step=1&CO_ID=1101&SYEAR=2019&SSEASON=1&REPORT_ID=C"
     url = "https://mops.twse.com.tw/server-java/FileDownLoad?step=9&fileName=tifrs-"+str(year)+"Q"+str(season)\
             +".zip&filePath=/home/html/nas/ifrs/"+str(year)+"/"
     
