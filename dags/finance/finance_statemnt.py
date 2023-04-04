@@ -149,7 +149,36 @@ def patch2019(df):
 def check_dir(path):
     if not os.path.exists(path):
         os.mkdir(path)
+def get_season(date):
+    '''
+    Get the season of the specified date.
+    Parameters
+    ----------
+    date : datetime.date
+        The date.
+    Returns
+    -------
+    int
+        The season of the specified date.
+    '''
+    year = date.year
+    if date.month == 3:
+        season = 4
+        year = year - 1
+        month = 11
+    elif date.month == 5:
+        season = 1
+        month = 2
+    elif date.month == 8:
+        season = 2
+        month = 5
+    elif date.month == 11:
+        season = 3
+        month = 8
+    else:
+        return None
 
+<<<<<<< HEAD
 def download_finance_statement(date):
     def tran_date(date):
         year = date.year
@@ -174,6 +203,24 @@ def download_finance_statement(date):
             return None
     
     year, season, month = tran_date(date)
+=======
+def download_finance_statement(year, season):
+    '''
+    Download the financial statement of the specified year and season.
+    Parameters
+    ----------
+    year : int
+        The year of the financial statement.
+        season : int
+        The season of the financial statement.
+    Returns
+    -------
+    bool
+        True if the financial statement is downloaded successfully.
+        False if the financial statement is not downloaded successfully.
+    '''
+
+>>>>>>> 48276dce06061b17445ca15d4a87f8b124245789
     # remove the directory if it exists
     path = os.path.join('history', 'financial_statement', str(year) + str(season))
     if os.path.isdir(path):
@@ -217,6 +264,21 @@ def rename_finance_statement(path):
     return True
 
 def download_finance_zipfile(year, season):
+    '''
+    Download the financial statement of the specified year and season.
+    Parameters
+    ----------
+    year : int
+        The year of the financial statement.
+        season : int
+        The season of the financial statement.
+    Returns
+    -------
+        bool
+        True if the financial statement is downloaded successfully.
+        False if the financial statement is not downloaded successfully.
+        '''
+    # url = "https://mops.twse.com.tw/server-java/t164sb01?step=1&CO_ID=1101&SYEAR=2019&SSEASON=1&REPORT_ID=C"
     url = "https://mops.twse.com.tw/server-java/FileDownLoad?step=9&fileName=tifrs-"+str(year)+"Q"+str(season)\
             +".zip&filePath=/home/html/nas/ifrs/"+str(year)+"/"
     
@@ -235,3 +297,8 @@ def unzip_finance_zipfile(path):
 
 
 
+<<<<<<< HEAD
+=======
+# if __name__ == "__main__":
+#     download_finance_statement(2019, 1)
+>>>>>>> 48276dce06061b17445ca15d4a87f8b124245789

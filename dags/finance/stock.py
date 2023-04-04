@@ -266,12 +266,11 @@ def merge(twe, otc, t2o):
     return pd.concat([twe,otc])
 
 def crawl_price(date):
-    """
+    '''
     Args:
-        
+        date: datetime.date
     Returns:
-   
-    """
+        df: pd.DataFrame'''
     
 
     dftwe = price_twe(date)
