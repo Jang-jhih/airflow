@@ -1,5 +1,4 @@
 
-
 from dateutil.rrule import rrule, DAILY, MONTHLY
 from finance.require import *
 import numpy as np
@@ -41,6 +40,18 @@ def date_range(start_date, end_date):
 
 
 
+
+def crawl_monthly_report(date):
+
+    dftwe = month_revenue(name='sii', date=date)
+    time.sleep(5)
+    dfotc = month_revenue('otc', date)
+    print('Crawlar ' + str(date) + ' month_revenue')
+    if len(dftwe) != 0 and len(dfotc) != 0:
+        return merge(twe=dftwe, otc=dfotc, t2o = o2tm)
+    else:
+        return pd.DataFrame()
+
 def month_revenue(name, date):
 
     year = date.year - 1911
@@ -48,19 +59,21 @@ def month_revenue(name, date):
     if month == 12:
         year -= 1
     url = 'https://mops.twse.com.tw/nas/t21/%s/t21sc03_%d_%d.html' % (name, year, month)
-    print(url)
+    # print(url)
     res = requests_get(url, verify=False)
     res.encoding = 'big5'
 
     try:
-        dfs = pd.read_html(StringIO(res.text), encoding='big-5')
+        dfs = pd.read_html(io.StringIO(res.text), encoding='big-5')
     except Exception as e:
         print('MONTH ' + name + ': cannot parse ' + str(date))
         print(e)
         return pd.DataFrame()
 
     df = pd.concat([df for df in dfs if df.shape[1] <= 11 and df.shape[1] > 5])
-
+    
+    df = df.rename(columns={'公司 代號':'公司代號'})
+    
     if 'levels' in dir(df.columns):
         df.columns = df.columns.get_level_values(1)
     else:
@@ -72,7 +85,7 @@ def month_revenue(name, date):
     df = df.loc[~pd.to_numeric(df['當月營收'], errors='coerce').isnull()]
     df = df[df['公司代號'] != '合計']
     df = combine_index(df, '公司代號', '公司名稱')
-    df = preprocess(df, datetime.date(date.year, date.month, 10))
+    df = preprocess(df, date)
     return df.drop_duplicates()
 
 

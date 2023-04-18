@@ -7,8 +7,8 @@ from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from datahub_provider.entities import Dataset, Urn
-from finance.stock import (month_revenue
-                           )
+from finance.stock import crawl_monthly_report
+
 import time
 from finance.process import month_range, test_database
 
@@ -46,30 +46,28 @@ with DAG(
     
     def download_monthly_data():
         job = 'crawl_month'
-        tablenames = "month_revenue"
+        tablename = "month_revenue"
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
 
+        var = f'{job}'
+        try:
+            datetime_object = Variable.get(var)
+        except:
+            datetime_object = datetime.strptime('20190110', '%Y%m%d')
         dates = month_range(datetime_object, datetime.now())
 
         for date in dates:
             time.sleep(5)
-            print(f'Crawlar {date}')
-            for tablename in tablenames:
-                var = f'{job}_{tablename}'
-                try:
-                    datetime_object = Variable.get(var)
-                except:
-                    datetime_object = datetime.strptime('20000107', '%Y%m%d')
-                
-                
-                print(f'Crawlar {tablename}')
-                df = month_revenue(date)
-                
-                if test:
-                    df = test_database(df,key=tablename)
-                else:
-                    df.to_sql(tablename, engine, if_exists='append', index=False)
+            print(f'Crawlar {date} {tablename}')
+
+
+            df = crawl_monthly_report(date)
+            
+            if test:
+                df = test_database(df,key=tablename)
+            else:
+                df.to_sql(tablename, engine, if_exists='append', index=False)
 
 
 

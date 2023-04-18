@@ -7,8 +7,10 @@ from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from datahub_provider.entities import Dataset, Urn
-from finance.stock import *
-from fininance.process import test_database
+from finance.stock import (crawl_price,crawl_bargin,crawl_benchmark,crawl_pe
+                            )
+import time
+from finance.process import test_database, date_range
 import os
 
 test = True
@@ -39,15 +41,18 @@ with DAG(
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
 
-        try:
-            datetime_object = Variable.get(var)
-        except:
-            datetime_object = datetime.strptime('20000107', '%Y%m%d')
 
-        dates = date_range(datetime_object, datetime.now())
+
 
         for crawl_func,tablename in zip(crawl_funcs,tablenames):
             # print(crawl_func,tablename)
+            var = f'{job}_{tablename}'
+            try:
+                datetime_object = Variable.get(var)
+            except:
+                datetime_object = datetime.strptime('20000107', '%Y%m%d')
+
+            dates = date_range(datetime_object, datetime.now())
             for date in dates:
  
                 print(f'Crawlar {tablename} {date}')
