@@ -49,7 +49,7 @@ with DAG(
         for crawl_func,tablename in zip(crawl_funcs,tablenames):
             # print(crawl_func,tablename)
             for date in dates:
-                week = get_weekday(date)
+ 
                 print(f'Crawlar {tablename} {date}')
                 var = f'{job}_{tablename}'
                 df = crawl_func(date)
@@ -62,13 +62,11 @@ with DAG(
 
 
 
-
     Download_Daily_Data = PythonOperator(
         task_id = "download_daily_data",
         python_callable = download_daily_data
     )
 
 
-  
 
     Download_Daily_Data 

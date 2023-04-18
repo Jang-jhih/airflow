@@ -11,6 +11,7 @@ import csv
 from finance.stock import (month_revenue
                            )
 import os
+from finance.process import month_range
 
 
 """

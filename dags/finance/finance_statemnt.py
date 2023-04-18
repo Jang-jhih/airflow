@@ -9,7 +9,13 @@ import pickle
 import numpy as np
 import re
 
+def get_finance_season(date):
+    year, season, month = get_season(date)
+    print(f'Crawlar {year} {season}')
+    
+    download_finance_statement(year, season)
 
+    get_finance_statement(year, season)
 
 
 def get_finance_statement(year,season):
@@ -176,34 +182,13 @@ def get_season(date):
         season = 3
         month = 8
     else:
-        return None
-
-<<<<<<< HEAD
-def download_finance_statement(date):
-    def tran_date(date):
-        year = date.year
-        if date.month == 3:
-            season = 4
-            year = year - 1
-            month = 11
-            return year, season, month
-        elif date.month == 5:
-            season = 1
-            month = 2
-            return year, season, month
-        elif date.month == 8:
-            season = 2
-            month = 5
-            return year, season, month
-        elif date.month == 11:
-            season = 3
-            month = 8
-            return year, season, month
-        else:
-            return None
+        return None, None, None
+        print('The date is not in the season.')
     
-    year, season, month = tran_date(date)
-=======
+    
+
+    return year, season, month
+
 def download_finance_statement(year, season):
     '''
     Download the financial statement of the specified year and season.
@@ -220,7 +205,6 @@ def download_finance_statement(year, season):
         False if the financial statement is not downloaded successfully.
     '''
 
->>>>>>> 48276dce06061b17445ca15d4a87f8b124245789
     # remove the directory if it exists
     path = os.path.join('history', 'financial_statement', str(year) + str(season))
     if os.path.isdir(path):
@@ -243,7 +227,7 @@ def download_finance_statement(year, season):
     # rename the file
     rename_finance_statement(path)
     # remove the zip file
-    os.remove("finance.zip")
+    os.remove(os.path.join('history',"finance.zip"))
     return True
 
 def rename_finance_statement(path):
@@ -284,21 +268,14 @@ def download_finance_zipfile(year, season):
     
     chunk_size = 1024
     r = requests.get(url, stream=True)
-    with open("finance.zip", "wb") as f:
+    with open(os.path.join('history',"finance.zip"), "wb") as f:
         for chunk in r.iter_content(chunk_size=chunk_size):
             if chunk:
                 f.write(chunk)
     return True
 
 def unzip_finance_zipfile(path):
-    with zipfile.ZipFile("finance.zip", "r") as zip_ref:
+    with zipfile.ZipFile(os.path.join('history',"finance.zip"), "r") as zip_ref:
         zip_ref.extractall(path)
     return True
 
-
-
-<<<<<<< HEAD
-=======
-# if __name__ == "__main__":
-#     download_finance_statement(2019, 1)
->>>>>>> 48276dce06061b17445ca15d4a87f8b124245789

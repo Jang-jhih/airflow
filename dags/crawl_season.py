@@ -1,21 +1,91 @@
-from finance.finance_statemnt import download_finance_statement, get_season
-from finance.process import get_season
+from finance.finance_statemnt import get_finance_season
+from finance.process import season_range
 from datetime import datetime, timedelta
-from finance.stock import date_range
+# from finance.stock import date_range
 from airflow.models import Variable
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+import pandas as pd
+import os
 
 
-def download_finance_statement(year, season):
-    try:
-        datetime_object = Variable.get(var)
-    except:
-        datetime_object = datetime.strptime('20200101', '%Y%m%d')
+"""
+    This DAG will crawl the data from the season.
+    The code is in the following files:
+    1. crawl_season.py
+    2. crawl_year.py
+    3. crawl_week.py
+    4. crawl_day.py
+"""
+
+default_args = {
+    'owner': 'Crawlar',
+    'depends_on_past': False,
+    'start_date': datetime(2023, 2, 18),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5)
+}
+# This DAG is used to crawl the date every day.
+
+with DAG(
+    "crawl_date",
+    default_args = default_args,
+    description = "日執行",
+    schedule=timedelta(days=1),
+    start_date=datetime(2021, 1, 1),
+    catchup=False,
+    tags=["datahub_demo"],
+) as dag:
+    dag.doc_md = __doc__
+    
+    def crawl_season():
+        
+        try:
+            datetime_object = Variable.get(var)
+        except:
+            datetime_object = datetime.strptime('20190501', '%Y%m%d')
+
+        dates = season_range(datetime_object, datetime.now())
+        for date in dates:
+            get_finance_season(date)
+            
+        #Put the data from history directory into the database.
+    def put_data_into_db():
+        
+        hook = PostgresHook(postgres_conn_id="_postgresql")
+        engine = hook.get_sqlalchemy_engine()
+        file_path = os.listdir('history')
+        for file in file_path:
+            df = pd.read_pickle(f'history/{file}')
+            df.to_sql(file.split('.')[0], engine, if_exists='append', index=False)
+
+    #remove the history directory.
+    def remove_history():
+        os.rmdir('history')
+        print('!!!!Remove history directory!!!!')
+        
 
 
-    dates = season_range(datetime_object, datetime.now())
-    for date in dates:
-        year, season = get_season(date)
-        print(f'Crawlar {year} {season}')
-        var = f'crawl_season_{year}_{season}'
-        download_finance_statement(year, season)
-        Variable.set(var,date + timedelta(days=1))
+    Download_Season_Data = PythonOperator(
+        task_id = "download_season_data",
+        python_callable = crawl_season,
+    )
+
+
+    Put_Data_Into_DB = PythonOperator(
+        task_id = "put_data_into_db",
+        python_callable = put_data_into_db,
+    )
+
+    Remove_History = PythonOperator(
+        task_id = "remove_history",
+        python_callable = remove_history,
+    )
+
+    Download_Season_Data >> Put_Data_Into_DB >> Remove_History
+
+
+    
+        
+        
