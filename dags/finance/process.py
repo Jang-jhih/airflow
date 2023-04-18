@@ -10,6 +10,18 @@ import pandas as pd
 
 
 
+#Test using only Sqlite
+from sqlalchemy import create_engine
+import sqlite3
+def test_database(df, key):
+    
+    engine = create_engine('sqlite:///test.db', echo=True)
+    sqlite_connection = engine.connect()
+    sqlite_table = key
+    df.to_sql(sqlite_table, sqlite_connection, if_exists='append')
+    return True
+
+
 def get_weekday(date):
     weekday = date.weekday()
     if weekday == 0:

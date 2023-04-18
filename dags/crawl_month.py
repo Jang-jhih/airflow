@@ -7,13 +7,12 @@ from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from datahub_provider.entities import Dataset, Urn
-import csv
 from finance.stock import (month_revenue
                            )
-import os
-from finance.process import month_range
+import time
+from finance.process import month_range, test_database
 
-
+test = True
 """
     This DAG will crawl the data from the month.
     The code is in the following files:
@@ -54,6 +53,7 @@ with DAG(
         dates = month_range(datetime_object, datetime.now())
 
         for date in dates:
+            time.sleep(5)
             print(f'Crawlar {date}')
             for tablename in tablenames:
                 var = f'{job}_{tablename}'
@@ -65,6 +65,11 @@ with DAG(
                 
                 print(f'Crawlar {tablename}')
                 df = month_revenue(date)
+                
+                if test:
+                    df = test_database(df,key=tablename)
+                else:
+                    df.to_sql(tablename, engine, if_exists='append', index=False)
 
 
 

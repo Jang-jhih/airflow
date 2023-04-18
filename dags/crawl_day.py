@@ -7,11 +7,11 @@ from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from datahub_provider.entities import Dataset, Urn
-import csv
 from finance.stock import *
+from fininance.process import test_database
 import os
 
-
+test = True
 default_args = {
     'owner': 'Crawlar',
     'depends_on_past': False,
@@ -55,8 +55,10 @@ with DAG(
                 df = crawl_func(date)
 
                 time.sleep(5)
-
-                df.to_sql(tablename, engine, if_exists='append', index=False)
+                if test:
+                    df = test_database(df,key=tablename)
+                else:
+                    df.to_sql(tablename, engine, if_exists='append', index=False)
                 Variable.set(var,date + timedelta(days=1))
 
 
