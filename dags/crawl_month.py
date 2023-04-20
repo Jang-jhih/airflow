@@ -11,8 +11,10 @@ from finance.stock import crawl_monthly_report
 
 import time
 from finance.process import month_range, test_database
+import os
 
-test = True
+
+test = os.getenv('test')
 """
     This DAG will crawl the data from the month.
     The code is in the following files:
@@ -34,10 +36,9 @@ default_args = {
 
 with DAG(
     "crawl_month",
-    default_args = default_args,
-    description = "月執行",
-    schedule=timedelta(days=1),
-    start_date="15 19 * * *",
+    default_args=default_args,
+    description="月執行",
+    schedule_interval="15 19 1-10 * *",
     catchup=False,
     tags=["datahub_demo"],
 ) as dag:

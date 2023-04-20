@@ -9,7 +9,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 import pandas as pd
 import os
 
-test = False
+test = os.getenv('test')
 """
     This DAG will crawl the data from the season.
     The code is in the following files:
@@ -24,15 +24,14 @@ default_args = {
     'depends_on_past': False,
     'start_date': datetime(2023, 2, 18),
     'retries': 1,
-    'retry_delay': timedelta(minutes=5)
+    'retry_delay': timedelta(minutes=5),
 }
-# This DAG is used to crawl the date every day.
 
 with DAG(
-    "crawl_date",
-    default_args = default_args,
-    description = "日執行",
-    schedule=timedelta(days=1),
+    dag_id="crawl_season",
+    default_args=default_args,
+    description="季執行",
+    schedule_interval=None,
     start_date=datetime(2021, 1, 1),
     catchup=False,
     tags=["datahub_demo"],

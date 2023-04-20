@@ -13,26 +13,26 @@ import time
 from finance.process import test_database, date_range
 import os
 
-test = True
+test = os.getenv('test')
 default_args = {
     'owner': 'Crawlar',
     'depends_on_past': False,
     'start_date': datetime(2023, 2, 18),
     'retries': 1,
-    'retry_delay': timedelta(minutes=5)
+    'retry_delay': timedelta(minutes=5),
 }
-# This DAG is used to crawl the date every day.
 
+# This DAG is used to crawl the date every day.
 with DAG(
     "crawl_date",
-    default_args = default_args,
-    description = "日執行",
-    schedule=timedelta(days=1),
-    start_date=datetime(2021, 1, 1),
+    default_args=default_args,
+    description="日執行",
+    schedule_interval=timedelta(days=1),
     catchup=False,
     tags=["datahub_demo"],
 ) as dag:
     dag.doc_md = __doc__
+
     
     def download_daily_data():
         job = 'crawl_date'
