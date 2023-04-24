@@ -1,5 +1,0 @@
-acryl-datahub-airflow-plugin
-
-fake_useragent
-apache-airflow-providers-mongo
-

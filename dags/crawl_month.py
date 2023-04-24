@@ -3,10 +3,10 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
-from airflow.operators.bash import BashOperator
+# from airflow.operators.bash import BashOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.providers.postgres.operators.postgres import PostgresOperator
-from datahub_provider.entities import Dataset, Urn
+# from airflow.providers.postgres.operators.postgres import PostgresOperator
+# from datahub_provider.entities import Dataset, Urn
 from finance.stock import crawl_monthly_report
 
 import time
@@ -50,10 +50,12 @@ with DAG(
         tablename = "month_revenue"
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
+        date_format = '%Y-%m-%d'
 
         var = f'{job}'
         try:
-            datetime_object = Variable.get(var)
+            datetime_str = Variable.get(var)
+            datetime_object = datetime.strptime(datetime_str, date_format)
         except:
             datetime_object = datetime.strptime('20190110', '%Y%m%d')
         dates = month_range(datetime_object, datetime.now())
@@ -65,11 +67,11 @@ with DAG(
 
             df = crawl_monthly_report(date)
             
-            if test:
-                df = test_database(df,key=tablename)
-            else:
-                df.to_sql(tablename, engine, if_exists='append', index=False)
-
+            # if test:
+            #     df = test_database(df,key=tablename)
+            # else:
+            df.to_sql(tablename, engine, if_exists='append', index=False)
+            Variable.set(var,date)
 
 
 

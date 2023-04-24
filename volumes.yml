@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      # - postgres-db-volume:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      - my_network
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    # expose:
+      # - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+    volumes:
+      # - redis:/data
+      - ./data/redis:/data
+    networks:
+      - my_network
+
+volumes:
+  # postgres-db-volume:
+  redis:
+  #   external: false
+
+networks:
+  my_network:
+    driver: bridge
+    external: true
+  

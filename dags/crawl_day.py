@@ -1,17 +1,18 @@
 # from textwrap import dedent
 from airflow import DAG 
 from airflow.operators.python import PythonOperator
-from airflow.models import Variable
+
 from datetime import datetime, timedelta
-from airflow.operators.bash import BashOperator
-from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.providers.postgres.operators.postgres import PostgresOperator
-from datahub_provider.entities import Dataset, Urn
-from finance.stock import (crawl_price,crawl_bargin,crawl_benchmark,crawl_pe
-                            )
+# from airflow.operators.bash import BashOperator
+
+# from airflow.providers.postgres.operators.postgres import PostgresOperator
+# from datahub_provider.entities import Dataset, Urn
+from finance.stock import (crawl_price,crawl_bargin,crawl_benchmark,crawl_pe)
 import time
 from finance.process import test_database, date_range
 import os
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.models import Variable
 
 test = os.getenv('test')
 default_args = {
@@ -40,7 +41,7 @@ with DAG(
         crawl_funcs = [crawl_price,crawl_bargin,crawl_benchmark,crawl_pe]
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
-
+        date_format = '%Y-%m-%d'
 
 
 
@@ -48,9 +49,11 @@ with DAG(
             # print(crawl_func,tablename)
             var = f'{job}_{tablename}'
             try:
-                datetime_object = Variable.get(var)
+                datetime_str = Variable.get(var)
+                datetime_object = datetime.strptime(datetime_str, date_format)
             except:
-                datetime_object = datetime.strptime('20000107', '%Y%m%d')
+                datetime_object = datetime.strptime('20190107', '%Y%m%d')
+
 
             dates = date_range(datetime_object, datetime.now())
             for date in dates:
@@ -60,10 +63,10 @@ with DAG(
                 df = crawl_func(date)
 
                 time.sleep(5)
-                if test:
-                    df = test_database(df,key=tablename)
-                else:
-                    df.to_sql(tablename, engine, if_exists='append', index=False)
+                # if test:
+                #     df = test_database(df,key=tablename)
+                # else:
+                df.to_sql(tablename, engine, if_exists='append', index=False)
                 Variable.set(var,date + timedelta(days=1))
 
 

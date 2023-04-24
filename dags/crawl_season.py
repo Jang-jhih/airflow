@@ -42,7 +42,8 @@ with DAG(
         
         var = 'crawl_season'
         try:
-            datetime_object = Variable.get(var)
+            datetime_str = Variable.get(var)
+            datetime_object = datetime.strptime(datetime_str, '%Y%m%d')
         except:
             datetime_object = datetime.strptime('20190501', '%Y%m%d')
 
