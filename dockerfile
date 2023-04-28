@@ -18,8 +18,8 @@ RUN apt-get update && \
 
 USER airflow
 RUN pip install --upgrade pip \
-    && pip install acryl-datahub-airflow-plugin \
-                    fake_useragent \
+    # && pip install acryl-datahub-airflow-plugin \
+    && pip install fake_useragent \
                     apache-airflow-providers-mongo
 
 

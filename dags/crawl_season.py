@@ -8,6 +8,8 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 import pandas as pd
 import os
+import logging
+
 
 test = os.getenv('test')
 """
@@ -37,18 +39,24 @@ with DAG(
     tags=["datahub_demo"],
 ) as dag:
     dag.doc_md = __doc__
-    
+    logger = logging.getLogger("airflow.task")
+
     def crawl_season():
-        
+        date_format = '%Y-%m-%d'
         var = 'crawl_season'
+
         try:
             datetime_str = Variable.get(var)
-            datetime_object = datetime.strptime(datetime_str, '%Y%m%d')
+            datetime_object = datetime.strptime(datetime_str, date_format)
+            logger.info("datetime_object is %s" % datetime_object)
         except:
             datetime_object = datetime.strptime('20190501', '%Y%m%d')
+            logger.info("date time is %s" % datetime_object)
 
         dates = season_range(datetime_object, datetime.now())
+        logger.info("dates is %s" % dates)
         for date in dates:
+            logger.info("date is %s" % date)
             get_finance_season(date)
             Variable.set(var, date)
             
@@ -58,11 +66,13 @@ with DAG(
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
         path = os.path.join('history','financial_statement')
-        
+
         #get all the pickle files.
         pickle_files = [f for f in os.listdir(path) if f.endswith('.pickle')]
-
+        logging.info(f'Found {len(pickle_files)} pickle files.')
+        
         for file in pickle_files:
+            logging.info(f'Processing {file}')
             dfs = pd.read_pickle(f'{path}/{file}')
 
             #get the data from the dataframe.
@@ -73,7 +83,7 @@ with DAG(
                 if test:
                     test_database(df,key)
                 else:
-                    
+                    logging.info(f'Loading {key} into database.')
                     df.to_sql(file.split('.')[0], engine, if_exists='append', index=False)
 
     #remove the history directory.

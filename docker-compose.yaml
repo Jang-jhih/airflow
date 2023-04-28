@@ -14,16 +14,26 @@ services:
     networks:
       - my_network
 
-  datascience-notebook:
-      image: jupyter/datascience-notebook
-      volumes:
-        - ~/jupyter-notebook/data:/home/andy/work
-      ports:
-        - 10000:8888 #更改外部進入的埠號，若無必要也可以都設為 8888
-      container_name: datascience-notebook-container
-      networks:
+  # datascience-notebook:
+  #     image: jupyter/datascience-notebook
+  #     volumes:
+  #       - ~/jupyter-notebook/data:/home/andy/work
+  #     ports:
+  #       - 10000:8888 #更改外部進入的埠號，若無必要也可以都設為 8888
+  #     container_name: datascience-notebook-container
+  #     networks:
+  #     - my_network
+
+  jupyter:
+    image: jupyter/minimal-notebook:latest
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    networks:
       - my_network
-    
 
 networks:
   my_network:
