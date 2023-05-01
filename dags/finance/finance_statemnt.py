@@ -8,26 +8,35 @@ from datetime import datetime
 import pickle
 import numpy as np
 import re
+import logging
+
 
 def get_finance_season(date):
+    tmp_path = os.getenv('tmp_dir')
     year, season, month = get_season(date)
     print(f'Crawlar {year} {season}')
     
-    download_finance_statement(year, season)
+    if download_finance_statement(year, season,tmp_path):
+        print ('Download success')
 
-    get_finance_statement(year, season)
+    get_finance_statement(year, season,tmp_path)
 
 
-def get_finance_statement(year,season):
-    path = os.path.join('history', 'financial_statement', str(year) + str(season))
+def get_finance_statement(year,season,tmp_path):
+    
+    path = os.path.join(tmp_path, 'financial_statement', str(year) + str(season))
     balance_sheet = {}
     income_sheet = {}
     cash_flows = {}
     income_sheet_cumulate = {}
 
-
+    all_file = os.listdir(path)
+    #keep only HTLM files
+    all_file = [f for f in all_file if f.endswith('.html')]
     
-    for fname in os.listdir(path):
+    for fname in all_file:
+
+        logging.getLogger("airflow.task").info(f'Processing {fname}')
         dfs = read_html2019(os.path.join(path,fname))
         for df in dfs:
             if 'levels' in dir(df.columns):
@@ -60,28 +69,29 @@ def get_finance_statement(year,season):
         if season == 1:
             income_sheet[stock_id] = df[1].dropna()
 
-        # 取得 cash_flows
-        df = dfs[3].copy().drop_duplicates(subset=0, keep='last')
-        df = df.set_index(0)
-        cash_flows[stock_id] = df[1].dropna()
 
-        # 將dictionary整理成dataframe
-        balance_sheet = pd.DataFrame(balance_sheet)
-        income_sheet = pd.DataFrame(income_sheet)
-        income_sheet_cumulate = pd.DataFrame(income_sheet_cumulate)
-        cash_flows = pd.DataFrame(cash_flows)
+    # 取得 cash_flows
+    df = dfs[3].copy().drop_duplicates(subset=0, keep='last')
+    df = df.set_index(0)
+    cash_flows[stock_id] = df[1].dropna()
 
-        # 做清理
-        ret = {'balance_sheet':clean(year, season, balance_sheet), 'income_sheet':clean(year, season, income_sheet),
-                'income_sheet_cumulate':clean(year, season, income_sheet_cumulate), 'cash_flows':clean(year, season, cash_flows)}
+    # 將dictionary整理成dataframe
+    balance_sheet = pd.DataFrame(balance_sheet)
+    income_sheet = pd.DataFrame(income_sheet)
+    income_sheet_cumulate = pd.DataFrame(income_sheet_cumulate)
+    cash_flows = pd.DataFrame(cash_flows)
 
-        # 假如是第一季的話，則 單季 跟 累計 是一樣的
-        if season == 1:
-            ret['income_sheet'] = ret['income_sheet_cumulate'].copy()
+    # 做清理
+    ret = {'balance_sheet':clean(year, season, balance_sheet), 'income_sheet':clean(year, season, income_sheet),
+            'income_sheet_cumulate':clean(year, season, income_sheet_cumulate), 'cash_flows':clean(year, season, cash_flows)}
 
-        ret['income_sheet_cumulate'].columns = '累計' + ret['income_sheet_cumulate'].columns
+    # 假如是第一季的話，則 單季 跟 累計 是一樣的
+    if season == 1:
+        ret['income_sheet'] = ret['income_sheet_cumulate'].copy()
 
-        pickle.dump(ret, open(os.path.join('history', 'financial_statement', 'pack' + str(year) + str(season) + '.pickle'), 'wb'))
+    ret['income_sheet_cumulate'].columns = '累計' + ret['income_sheet_cumulate'].columns
+    
+    pickle.dump(ret, open(os.path.join(tmp_path, 'financial_statement', 'pack' + str(year) + str(season) + '.pickle'), 'wb'))
 
 def clean(year, season, balance_sheet):
 
@@ -189,7 +199,7 @@ def get_season(date):
 
     return year, season, month
 
-def download_finance_statement(year, season):
+def download_finance_statement(year, season,tmp_path):
     '''
     Download the financial statement of the specified year and season.
     Parameters
@@ -206,12 +216,12 @@ def download_finance_statement(year, season):
     '''
 
     # remove the directory if it exists
-    path = os.path.join('history', 'financial_statement', str(year) + str(season))
+    path = os.path.join(tmp_path, 'financial_statement', str(year) + str(season))
     if os.path.isdir(path):
         shutil.rmtree(path)
 
     # check if the directory exists
-    dict_tree = {'history': {'financial_statement': {}}}
+    dict_tree = {tmp_path: {'financial_statement': {}}}
     # create the directory
     for k, v in dict_tree.items():
         check_dir(k)
@@ -221,13 +231,13 @@ def download_finance_statement(year, season):
                 check_dir(os.path.join(k, k1, k2))
     
     # download the zip file
-    download_finance_zipfile(year, season)
+    download_finance_zipfile(year, season,tmp_path)
     # unzip the zip file
-    unzip_finance_zipfile(path)
+    unzip_finance_zipfile(path,tmp_path)
     # rename the file
     rename_finance_statement(path)
     # remove the zip file
-    os.remove(os.path.join('history',"finance.zip"))
+    os.remove(os.path.join(tmp_path,"finance.zip"))
     return True
 
 def rename_finance_statement(path):
@@ -247,7 +257,7 @@ def rename_finance_statement(path):
             os.remove(os.path.join(path, fold))
     return True
 
-def download_finance_zipfile(year, season):
+def download_finance_zipfile(year, season,tmp_path):
     '''
     Download the financial statement of the specified year and season.
     Parameters
@@ -268,14 +278,14 @@ def download_finance_zipfile(year, season):
     
     chunk_size = 1024
     r = requests.get(url, stream=True)
-    with open(os.path.join('history',"finance.zip"), "wb") as f:
+    with open(os.path.join(tmp_path,"finance.zip"), "wb") as f:
         for chunk in r.iter_content(chunk_size=chunk_size):
             if chunk:
                 f.write(chunk)
     return True
 
-def unzip_finance_zipfile(path):
-    with zipfile.ZipFile(os.path.join('history',"finance.zip"), "r") as zip_ref:
+def unzip_finance_zipfile(path,tmp_path):
+    with zipfile.ZipFile(os.path.join(tmp_path,"finance.zip"), "r") as zip_ref:
         zip_ref.extractall(path)
     return True
 

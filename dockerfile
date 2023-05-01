@@ -20,6 +20,7 @@ USER airflow
 RUN pip install --upgrade pip \
     # && pip install acryl-datahub-airflow-plugin \
     && pip install fake_useragent \
-                    apache-airflow-providers-mongo
+                    apache-airflow-providers-mongo \
+                    html5lib
 
 

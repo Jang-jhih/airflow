@@ -13,7 +13,7 @@ def get(dataset):
     #execute query
     df = pd.read_sql(sql, connection)
     df.set_index('date', inplace=True)
-    return df
+    return df.squeeze()
 
 def connect():
     connection = psycopg2.connect(

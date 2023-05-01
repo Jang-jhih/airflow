@@ -62,11 +62,12 @@ with DAG(
             
     #Put the data from history directory into the database.
     def put_data_into_db():
-        
+
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
-        path = os.path.join('history','financial_statement')
 
+        tmp_path = os.getenv('tmp_dir')
+        path = os.path.join(tmp_path,'financial_statement')
         #get all the pickle files.
         pickle_files = [f for f in os.listdir(path) if f.endswith('.pickle')]
         logging.info(f'Found {len(pickle_files)} pickle files.')
@@ -88,7 +89,8 @@ with DAG(
 
     #remove the history directory.
     def remove_history():
-        os.rmdir('history')
+        tmp_path = os.getenv('tmp_dir')
+        os.rmdir(tmp_path)
         print('!!!!Remove history directory!!!!')
         
 
@@ -104,12 +106,13 @@ with DAG(
         python_callable = put_data_into_db,
     )
 
-    Remove_History = PythonOperator(
-        task_id = "remove_history",
-        python_callable = remove_history,
-    )
+    # Remove_History = PythonOperator(
+    #     task_id = "remove_history",
+    #     python_callable = remove_history,
+    # )
 
-    Download_Season_Data >> Put_Data_Into_DB >> Remove_History
+    # Download_Season_Data >> Put_Data_Into_DB >> Remove_History
+    Download_Season_Data >> Put_Data_Into_DB 
 
 
     

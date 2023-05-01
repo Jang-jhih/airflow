@@ -1,0 +1,7 @@
+FROM jupyter/minimal-notebook:latest
+RUN pip install pandas \
+                fake_useragent \
+                apache-airflow-providers-mongo \
+                html5lib \
+                lxml
+RUN pip install 'apache-airflow [postgres]'
