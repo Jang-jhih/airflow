@@ -8,8 +8,9 @@ services:
       - "5432:5432"
     volumes:
       # - postgres-db-volume:/var/lib/postgresql/data
-      - ./data/postgres:/var/lib/postgresql/data
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+      # - ./data/postgres:/var/lib/postgresql/data
+      - /media/jacob/first_disk/data/postgres:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 10s
@@ -34,7 +35,8 @@ services:
     restart: always
     volumes:
       # - redis:/data
-      - ./data/redis:/data
+      # - ./data/redis:/data
+      - /media/jacob/first_disk/data/redis:/data
     networks:
       - my_network
 

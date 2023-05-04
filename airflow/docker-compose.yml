@@ -22,7 +22,8 @@ x-airflow-common:
     tmp_dir: /tmp
     test: false
   volumes:
-    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+    - ./dags:/opt/airflow/dags
+    - /media/jacob/first_disk/data/tmp:/tmp
     - ./docker/entrypoint.sh:/opt/airflow/docker/entrypoint.sh
   user: "${AIRFLOW_UID:-50000}:0"
 
