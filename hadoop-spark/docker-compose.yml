@@ -1,9 +1,17 @@
 version: '2' 
 x-common: &common
   networks:
-      - my_network
+    - my_network
   env_file:
     - ./hadoop-hive.env
+
+x-volume-config: &volume-config
+  volumes:
+    - /media/jacob/first_disk/data/namenode:/hadoop/dfs/name
+    - ./hadoop:/opt/hadoop-2.8.0/etc/hadoop
+
+
+
 
 
 
@@ -11,19 +19,24 @@ services:
   namenode:
     image: bde2020/hadoop-namenode:1.1.0-hadoop2.8-java8
     container_name: namenode
-    volumes:
-      - /media/jacob/first_disk/data/namenode:/hadoop/dfs/name
     environment:
       - CLUSTER_NAME=test
+
+    volumes:
+      - /media/jacob/first_disk/data/namenode:/hadoop/dfs/name
+      - ./hadoop:/opt/hadoop-2.8.0/etc/hadoop
     <<: *common
     ports:
       - 50070:50070
+
   datanode:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.8-java8
     depends_on: 
       - namenode
+
     volumes:
       - /media/jacob/first_disk/data/namenode:/hadoop/dfs/name
+      - ./hadoop:/opt/hadoop-2.8.0/etc/hadoop
     <<: *common
     ports:
       - 50075:50075

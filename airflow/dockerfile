@@ -2,25 +2,27 @@ FROM apache/airflow:2.5.1
 
 USER root
 
+# RUN apt-get update && \
+#     apt-get install -y --no-install-recommends gcc git libssl-dev g++ make && \
+#     cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
+#     cd librdkafka && git checkout tags/v1.9.0 && \
+#     ./configure && make && make install && \
+#     cd ../ && rm -rf librdkafka
 
-RUN apt-get update && \
-  apt-get install -y --no-install-recommends gcc git libssl-dev g++ make && \
-  cd /tmp && git clone https://github.com/edenhill/librdkafka.git && \
-  cd librdkafka && git checkout tags/v1.9.0 && \
-  ./configure && make && make install && \
-  cd ../ && rm -rf librdkafka
+RUN apt update && \
+    apt install -y openjdk-11-jdk
 
-
-
-
-
-
+# Set JAVA_HOME environment variable
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64
+ENV PATH $JAVA_HOME/bin:$PATH
 
 USER airflow
-RUN pip install --upgrade pip \
-    # && pip install acryl-datahub-airflow-plugin \
-    && pip install fake_useragent \
-                    apache-airflow-providers-mongo \
-                    html5lib
 
-
+RUN pip install --upgrade pip && \
+    # pip install acryl-datahub-airflow-plugin && \
+    pip install fake_useragent \
+                apache-airflow-providers-mongo \
+                html5lib \
+                hdfs \
+                pyarrow \
+                pyspark

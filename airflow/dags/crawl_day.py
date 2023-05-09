@@ -3,16 +3,14 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 
 from datetime import datetime, timedelta
-# from airflow.operators.bash import BashOperator
-
-# from airflow.providers.postgres.operators.postgres import PostgresOperator
-# from datahub_provider.entities import Dataset, Urn
 from finance.stock import (crawl_price,crawl_bargin,crawl_benchmark,crawl_pe)
 import time
-from finance.process import test_database, date_range
+from finance.process import test_database, date_range, save_to_parquet
 import os
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models import Variable
+import pandas as pd
+
 
 test = os.getenv('test')
 default_args = {
@@ -36,14 +34,13 @@ with DAG(
 
     
     def download_daily_data():
+        # os.environ["JAVA_HOME"] = "/usr/lib/jvm/java-11-openjdk-amd64"
         job = 'crawl_date'
         tablenames = ['price','bargin','benchmark','pe']
         crawl_funcs = [crawl_price,crawl_bargin,crawl_benchmark,crawl_pe]
         hook = PostgresHook(postgres_conn_id="_postgresql")
         engine = hook.get_sqlalchemy_engine()
         date_format = '%Y-%m-%d'
-
-
 
         for crawl_func,tablename in zip(crawl_funcs,tablenames):
             # print(crawl_func,tablename)
@@ -66,9 +63,9 @@ with DAG(
                 # if test:
                 #     df = test_database(df,key=tablename)
                 # else:
-                df.to_sql(tablename, engine, if_exists='append', index=False)
+                # df.to_sql(tablename, engine, if_exists='append', index=False)
+                save_to_parquet(df,tablename)
                 Variable.set(var,date + timedelta(days=1))
-
 
 
 

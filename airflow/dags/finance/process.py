@@ -7,12 +7,43 @@ import sqlalchemy
 import datetime
 import os
 import pandas as pd
+from multiprocessing import cpu_count
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import date_format
+def save_to_parquet(new_data_df, tablename):
+    # cores = cpu_count()
+    spark = (
+        SparkSession.builder
+        .appName("SaveToParquet")
+        # .master(f"local[{cores}]")  # 使用动态检测到的核心数
+        .master("spark://spark-master:7077")
+        .getOrCreate()
+    )
+    hdfs_path = f'hdfs://namenode:8020/datawarehouse/{tablename}'
+
+    try:
+        old_data_df = spark.read.parquet(hdfs_path)
+        old_data_df_spark = old_data_df_spark.withColumn("date", date_format("date", "yyyy-MM-dd"))
+        old_data_df = old_data_df_spark.toPandas()
+        df = pd.concat([old_data_df, new_data_df], ignore_index=True)
+        df = df.drop_duplicates()
+        df = df.sort_values(by=['date'])
+        df = spark.createDataFrame(df)
+        df.write.parquet(hdfs_path, mode='overwrite')
+        print(f'Update {tablename} to HDFS')
+    except:
+        new_data_df = new_data_df.sort_values(by=['date'])
+        new_data_df = spark.createDataFrame(new_data_df)
+        new_data_df.write.parquet(hdfs_path, mode='overwrite')
+        print(f'Create {tablename} to HDFS')
 
 
 
 #Test using only Sqlite
 from sqlalchemy import create_engine
 import sqlite3
+
 def test_database(df, key):
     
     engine = create_engine('sqlite:///test.db', echo=True)

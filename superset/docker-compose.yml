@@ -13,7 +13,7 @@ services:
     user: "root"
     restart: unless-stopped
     ports:
-      - 8088:8088
+      - 38088:8088
     volumes: *superset-volumes
     networks:
       - my_network

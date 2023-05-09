@@ -23,6 +23,7 @@ services:
     volumes:
       - ./notebooks:/home/jovyan/work
       - /home/jacob/Desktop/docker/airflow/dags/finance:/home/jovyan/work/finance
+      - /media/jacob/first_disk/data/tmp:/home/jovyan/work/tmp
     ports:
       - "8888:8888"
     environment:

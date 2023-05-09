@@ -61,36 +61,42 @@ with DAG(
             Variable.set(var, date)
             
     #Put the data from history directory into the database.
-    def put_data_into_db():
-
-        hook = PostgresHook(postgres_conn_id="_postgresql")
-        engine = hook.get_sqlalchemy_engine()
+    def concat_all_data():
 
         tmp_path = os.getenv('tmp_dir')
         path = os.path.join(tmp_path,'financial_statement')
-        #get all the pickle files.
         pickle_files = [f for f in os.listdir(path) if f.endswith('.pickle')]
-        logging.info(f'Found {len(pickle_files)} pickle files.')
         
+        i = 0
         for file in pickle_files:
-            logging.info(f'Processing {file}')
             dfs = pd.read_pickle(f'{path}/{file}')
-
-            #get the data from the dataframe.
-            for key in dfs.items():
+            for key in dfs.keys():
                 df = dfs[key]
-
-                #test database
-                if test:
-                    test_database(df,key)
+                if i == 0:
+                    old_df = pd.concat([df,pd.DataFrame()])
                 else:
-                    logging.info(f'Loading {key} into database.')
-                    df.to_sql(file.split('.')[0], engine, if_exists='append', index=False)
+                    old_df = pd.read_csv(os.path.join(tmp_path,f'{key}.csv'))
+                    old_df = pd.concat([old_df,df])
+                old_df.to_csv(os.path.join(tmp_path,f'{key}.csv'),index=False)
+            i += 1
+
+                    
+    def put_data_into_db():
+        hook = PostgresHook(postgres_conn_id="_postgresql")
+        engine = hook.get_sqlalchemy_engine()
+        tmp_path = os.getenv('tmp_dir')
+        for file in os.listdir(tmp_path):
+            if file.endswith('.csv'):
+                df = pd.read_csv(os.path.join(tmp_path,file))
+                file_name = file.split('.')[0]
+                df.to_sql(file_name, engine, if_exists='replace', index=False)
+
 
     #remove the history directory.
     def remove_history():
         tmp_path = os.getenv('tmp_dir')
-        os.rmdir(tmp_path)
+        path = os.path.join(tmp_path,'financial_statement')
+        os.rmdir(path)
         print('!!!!Remove history directory!!!!')
         
 
@@ -100,19 +106,25 @@ with DAG(
         python_callable = crawl_season,
     )
 
+    Concat_All_Data = PythonOperator(
+        task_id = "concat_all_data",
+        python_callable = concat_all_data,
+    )
 
     Put_Data_Into_DB = PythonOperator(
         task_id = "put_data_into_db",
         python_callable = put_data_into_db,
     )
 
-    # Remove_History = PythonOperator(
-    #     task_id = "remove_history",
-    #     python_callable = remove_history,
-    # )
 
-    # Download_Season_Data >> Put_Data_Into_DB >> Remove_History
-    Download_Season_Data >> Put_Data_Into_DB 
+
+    Remove_History = PythonOperator(
+        task_id = "remove_history",
+        python_callable = remove_history,
+    )
+
+
+    Download_Season_Data >> Concat_All_Data >> Put_Data_Into_DB >> Remove_History
 
 
     

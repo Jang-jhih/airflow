@@ -1,7 +1,21 @@
 FROM jupyter/minimal-notebook:latest
+
+USER root
+RUN apt update && \
+    apt install -y software-properties-common && \
+    add-apt-repository -y ppa:openjdk-r/ppa && \
+    apt update
+
 RUN pip install pandas \
                 fake_useragent \
                 apache-airflow-providers-mongo \
                 html5lib \
-                lxml
+                lxml \
+                hdfs \
+                pyarrow \
+                pyspark
+
 RUN pip install 'apache-airflow [postgres]'
+
+RUN apt install -y openjdk-8-jdk
+USER $NB_UID
